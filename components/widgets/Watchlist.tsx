@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { ApiClient } from "@/lib/apiClient";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
-import { Plus, ArrowUpDown } from "lucide-react";
+import { Plus, ArrowUpDown, TrendingUp, TrendingDown } from "lucide-react";
 
 type WatchlistProps = {
   apiKey: string;
@@ -12,7 +12,7 @@ type WatchlistProps = {
   onClose?: () => void;
 };
 
-type SortField = "ticker" | "price" | "change" | "high" | "low" | "volume";
+type SortField = "ticker" | "price" | "change";
 type SortDirection = "asc" | "desc";
 
 export default function Watchlist({
@@ -26,6 +26,8 @@ export default function Watchlist({
   const [sortField, setSortField] = useState<SortField>("ticker");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [newTicker, setNewTicker] = useState("");
+  const [containerWidth, setContainerWidth] = useState(400);
+  const containerRef = useRef<HTMLDivElement>(null);
   const clientRef = useRef<ApiClient | null>(null);
 
   useEffect(() => {
@@ -33,6 +35,18 @@ export default function Watchlist({
       clientRef.current = new ApiClient({ apiKey });
     }
   }, [apiKey]);
+
+  // Observe container width for responsive layout
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!clientRef.current || tickers.length === 0) return;
@@ -66,7 +80,7 @@ export default function Watchlist({
   useEffect(() => {
     if (apiKey) {
       loadData();
-      const interval = setInterval(loadData, 60000); // Auto-refresh every 60s
+      const interval = setInterval(loadData, 60000);
       return () => clearInterval(interval);
     }
   }, [apiKey, loadData]);
@@ -95,15 +109,6 @@ export default function Watchlist({
       case "change":
         comparison = (quoteA.dp || 0) - (quoteB.dp || 0);
         break;
-      case "high":
-        comparison = (quoteA.h || 0) - (quoteB.h || 0);
-        break;
-      case "low":
-        comparison = (quoteA.l || 0) - (quoteB.l || 0);
-        break;
-      case "volume":
-        comparison = (quoteA.v || 0) - (quoteB.v || 0);
-        break;
     }
 
     return sortDirection === "asc" ? comparison : -comparison;
@@ -121,6 +126,8 @@ export default function Watchlist({
     setTickers(tickers.filter((t) => t !== ticker));
   };
 
+  const isCompact = containerWidth < 320;
+
   const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <button
       onClick={() => handleSort(field)}
@@ -135,7 +142,7 @@ export default function Watchlist({
 
   return (
     <WidgetBase title="Watchlist" onClose={onClose}>
-      <div className="flex h-full flex-col">
+      <div ref={containerRef} className="flex h-full flex-col">
         {/* Add ticker */}
         <div className="mb-2 flex gap-2">
           <input
@@ -155,85 +162,119 @@ export default function Watchlist({
           </button>
         </div>
 
-        {/* Table */}
+        {/* Card view for compact / List view for wide */}
         <div className="flex-1 overflow-y-auto">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-[var(--bg-primary)]">
-              <tr className="border-b border-[var(--border)]">
-                <th className="py-1.5 text-left">
-                  <SortButton field="ticker">Ticker</SortButton>
-                </th>
-                <th className="py-1.5 text-right">
-                  <SortButton field="price">Price</SortButton>
-                </th>
-                <th className="py-1.5 text-right">
-                  <SortButton field="change">Change</SortButton>
-                </th>
-                <th className="py-1.5 text-right">
-                  <SortButton field="high">High</SortButton>
-                </th>
-                <th className="py-1.5 text-right">
-                  <SortButton field="low">Low</SortButton>
-                </th>
-                <th className="py-1.5 text-right">
-                  <SortButton field="volume">Vol</SortButton>
-                </th>
-                <th className="w-6"></th>
-              </tr>
-            </thead>
-            <tbody>
+          {isCompact ? (
+            /* Compact card view */
+            <div className="space-y-1.5">
               {sortedTickers.map((ticker) => {
                 const quote = quotes[ticker];
                 const isPositive = quote ? quote.dp >= 0 : true;
 
                 return (
-                  <tr
+                  <div
                     key={ticker}
-                    className="border-b border-[var(--border)] hover:bg-[var(--bg-secondary)]"
+                    className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-2"
                   >
-                    <td className="mono py-1.5 font-semibold text-[var(--text-primary)]">
-                      {ticker}
-                    </td>
-                    <td className="tabular-nums py-1.5 text-right text-[var(--text-primary)]">
-                      {quote ? formatCurrency(quote.c) : "—"}
-                    </td>
-                    <td
-                      className={`tabular-nums py-1.5 text-right ${
-                        quote
-                          ? isPositive
-                            ? "text-[var(--accent-green)]"
-                            : "text-[var(--accent-red)]"
-                          : "text-[var(--text-muted)]"
-                      }`}
-                    >
-                      {quote
-                        ? `${isPositive ? "+" : ""}${formatPercent(quote.dp)}`
-                        : "—"}
-                    </td>
-                    <td className="tabular-nums py-1.5 text-right text-[var(--text-secondary)]">
-                      {quote ? formatCurrency(quote.h) : "—"}
-                    </td>
-                    <td className="tabular-nums py-1.5 text-right text-[var(--text-secondary)]">
-                      {quote ? formatCurrency(quote.l) : "—"}
-                    </td>
-                    <td className="tabular-nums py-1.5 text-right text-[var(--text-muted)]">
-                      {quote?.v
-                        ? `${(quote.v / 1000000).toFixed(1)}M`
-                        : "—"}
-                    </td>
-                    <td>
+                    <div>
+                      <div className="mono text-xs font-semibold text-[var(--text-primary)]">
+                        {ticker}
+                      </div>
+                      {quote && (
+                        <div className="tabular-nums text-xs text-[var(--text-secondary)]">
+                          {formatCurrency(quote.c)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {quote && (
+                        <div className="flex items-center gap-1">
+                          {isPositive ? (
+                            <TrendingUp className="h-3 w-3 text-[var(--accent-green)]" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 text-[var(--accent-red)]" />
+                          )}
+                          <span
+                            className={`tabular-nums text-xs font-semibold ${
+                              isPositive ? "text-[var(--accent-green)]" : "text-[var(--accent-red)]"
+                            }`}
+                          >
+                            {isPositive ? "+" : ""}
+                            {formatPercent(quote.dp)}
+                          </span>
+                        </div>
+                      )}
                       <button
                         onClick={() => removeTicker(ticker)}
                         className="text-[var(--text-muted)] hover:text-[var(--accent-red)]"
                       >
                         ×
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            /* Table view for wider containers */
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-[var(--bg-primary)]">
+                <tr className="border-b border-[var(--border)]">
+                  <th className="py-1.5 text-left">
+                    <SortButton field="ticker">Ticker</SortButton>
+                  </th>
+                  <th className="py-1.5 text-right">
+                    <SortButton field="price">Price</SortButton>
+                  </th>
+                  <th className="py-1.5 text-right">
+                    <SortButton field="change">Change</SortButton>
+                  </th>
+                  <th className="w-6"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedTickers.map((ticker) => {
+                  const quote = quotes[ticker];
+                  const isPositive = quote ? quote.dp >= 0 : true;
+
+                  return (
+                    <tr
+                      key={ticker}
+                      className="border-b border-[var(--border)] hover:bg-[var(--bg-secondary)]"
+                    >
+                      <td className="mono py-1.5 font-semibold text-[var(--text-primary)]">
+                        {ticker}
+                      </td>
+                      <td className="tabular-nums py-1.5 text-right text-[var(--text-primary)]">
+                        {quote ? formatCurrency(quote.c) : "—"}
+                      </td>
+                      <td
+                        className={`tabular-nums py-1.5 text-right ${
+                          quote
+                            ? isPositive
+                              ? "text-[var(--accent-green)]"
+                              : "text-[var(--accent-red)]"
+                            : "text-[var(--text-muted)]"
+                        }`}
+                      >
+                        {quote
+                          ? `${isPositive ? "+" : ""}${formatPercent(quote.dp)}`
+                          : "—"}
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => removeTicker(ticker)}
+                          className="text-[var(--text-muted)] hover:text-[var(--accent-red)]"
+                        >
+                          ×
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </WidgetBase>

@@ -8,6 +8,7 @@ type NewsFeedProps = {
   apiKey: string;
   ticker?: string;
   onClose?: () => void;
+  onTickerChange?: (ticker: string) => void;
 };
 
 // Simple sentiment detection based on keywords
@@ -35,12 +36,22 @@ function timeAgo(timestamp: number): string {
   return `${days}d ago`;
 }
 
-export default function NewsFeed({ apiKey, ticker: initialTicker = "AAPL", onClose }: NewsFeedProps) {
+export default function NewsFeed({ apiKey, ticker: initialTicker = "AAPL", onClose, onTickerChange }: NewsFeedProps) {
   const [ticker, setTicker] = useState(initialTicker);
+  const [isEditing, setIsEditing] = useState(false);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<ApiClient | null>(null);
+
+  const handleTickerSubmit = (newTicker: string) => {
+    const symbol = newTicker.trim().toUpperCase();
+    if (symbol) {
+      setTicker(symbol);
+      setIsEditing(false);
+      onTickerChange?.(symbol);
+    }
+  };
 
   useEffect(() => {
     if (apiKey) {
@@ -82,6 +93,29 @@ export default function NewsFeed({ apiKey, ticker: initialTicker = "AAPL", onClo
   return (
     <WidgetBase title={`${ticker} — News`} onClose={onClose}>
       <div className="flex h-full flex-col">
+        {/* Ticker edit */}
+        <div className="mb-2">
+          {isEditing ? (
+            <input
+              autoFocus
+              defaultValue={ticker}
+              onBlur={(e) => handleTickerSubmit(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleTickerSubmit(e.currentTarget.value);
+                if (e.key === "Escape") setIsEditing(false);
+              }}
+              className="mono w-24 rounded border border-[var(--border)] bg-[var(--bg-secondary)] px-2 py-1 text-xs font-semibold uppercase outline-none focus:border-[var(--accent-blue)]"
+            />
+          ) : (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="mono text-xs font-semibold uppercase text-[var(--accent-blue)] hover:underline"
+            >
+              {ticker} ✎
+            </button>
+          )}
+        </div>
+
         {/* News list */}
         <div className="flex-1 space-y-2 overflow-y-auto pr-1 min-h-0">
           {loading && (

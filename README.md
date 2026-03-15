@@ -19,27 +19,42 @@ A sleek, customisable financial dashboard built with **Next.js 16**, **Tailwind 
 - **Add / remove** widgets on the fly from the floating action button
 - Smooth CSS-transform animations and a placeholder preview while dragging
 
-### Widgets (10 built-in)
+### Multi-Dashboard Support
+- **Create multiple dashboards** for different purposes (e.g., "Main Portfolio", "Commodities", "News & Events")
+- **Sidebar navigation** to switch between dashboards quickly
+- **Rename and delete** dashboards with confirmation
+- Each dashboard has its own widget layout and configuration
+- **Blank template** option for starting fresh
+
+### Widgets (15+ built-in)
 | Widget | Description |
 |---|---|
 | **Stock Quote** | Live price, % change, OHLC data, and optional sparkline |
 | **Price Chart** | Candlestick-resolution line chart with 1D–1Y range selector |
-| **Company News** | Sentiment-tagged news feed for any ticker |
+| **Company News** | Sentiment-tagged news feed for any ticker (editable) |
 | **Market News** | General financial headlines |
 | **Portfolio Tracker** | Add holdings (ticker / qty / avg cost), live P&L, and donut allocation chart |
-| **Watchlist** | Sortable table of tickers with price, change, high, low, volume |
+| **Watchlist** | Sortable table of tickers with price, change (responsive card/table view) |
 | **Market Overview** | Major-index quotes with mini sparklines |
-| **Sector Heatmap** | Color-coded sector performance at a glance |
+| **Sector Heatmap** | Color-coded sector performance at a glance (responsive grid) |
 | **Earnings Calendar** | Upcoming earnings dates and EPS estimates |
 | **Technical Indicators** | Key financial metrics (P/E, market cap, 52-wk range, etc.) |
+| **Crypto Tracker** | Real-time cryptocurrency quotes (BTC, ETH, SOL, etc.) |
+| **Company Profile** | Detailed company information (market cap, industry, IPO date, etc.) |
+| **Forex Rates** | Foreign exchange rates with base currency selector |
+| **IPO Calendar** | Upcoming initial public offerings |
+| **Insider Sentiment** | Insider trading sentiment analysis with bar chart |
 
 ### UI / UX
 - **Dark / Light theme** with system-preference detection and manual toggle
 - Notion-style hover-reveal drag handle and action buttons
 - Loading skeletons, price-pulse animations, and glass-morphism cards
+- **Responsive widgets** that adapt their layout when resized (vertical ↔ horizontal, hide/show elements)
+- **Scrollable dashboard** — all widgets accessible even when many are added
 - **Command palette** (`Ctrl+K` / `⌘K`) for instant stock search
 - Responsive breakpoints (`lg` / `md` / `sm`) — works on tablets too
 - Global rate-limit toast notifications
+- **Minimum widget sizes** enforced to prevent unreadable layouts
 
 ### Data & Persistence
 - All market data from [Finnhub](https://finnhub.io/) (free tier supported)

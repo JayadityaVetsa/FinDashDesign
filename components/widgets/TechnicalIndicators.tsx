@@ -9,12 +9,14 @@ type TechnicalIndicatorsProps = {
   apiKey: string;
   ticker?: string;
   onClose?: () => void;
+  onTickerChange?: (ticker: string) => void;
 };
 
 export default function TechnicalIndicators({
   apiKey,
   ticker: initialTicker = "AAPL",
   onClose,
+  onTickerChange,
 }: TechnicalIndicatorsProps) {
   const [ticker, setTicker] = useState(initialTicker);
   const [isEditing, setIsEditing] = useState(false);
@@ -22,6 +24,8 @@ export default function TechnicalIndicators({
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [containerWidth, setContainerWidth] = useState(400);
+  const containerRef = useRef<HTMLDivElement>(null);
   const clientRef = useRef<ApiClient | null>(null);
 
   useEffect(() => {
@@ -29,6 +33,18 @@ export default function TechnicalIndicators({
       clientRef.current = new ApiClient({ apiKey });
     }
   }, [apiKey]);
+
+  // Observe container width
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const loadData = async () => {
     if (!clientRef.current || !ticker.trim()) return;
@@ -38,7 +54,6 @@ export default function TechnicalIndicators({
     
     const symbol = ticker.trim().toUpperCase();
     
-    // Load each independently so partial failures don't kill everything
     try {
       const financialsData = await clientRef.current.getBasicFinancials(symbol);
       setFinancials(financialsData);
@@ -69,6 +84,7 @@ export default function TechnicalIndicators({
     if (symbol) {
       setTicker(symbol);
       setIsEditing(false);
+      onTickerChange?.(symbol);
     }
   };
 
@@ -81,14 +97,17 @@ export default function TechnicalIndicators({
     { label: "P/E Ratio", value: metric.peAnnual ? metric.peAnnual.toFixed(2) : "—" },
     { label: "EPS", value: metric.epsAnnual ? formatCurrency(metric.epsAnnual) : "—" },
     { label: "Market Cap", value: marketCap ? `$${(marketCap / 1000).toFixed(1)}B` : "—" },
-    { label: "Dividend Yield", value: metric.dividendYieldIndicatedAnnual ? formatPercent(metric.dividendYieldIndicatedAnnual) : "—" },
+    { label: "Div Yield", value: metric.dividendYieldIndicatedAnnual ? formatPercent(metric.dividendYieldIndicatedAnnual) : "—" },
     { label: "Beta", value: metric.beta ? metric.beta.toFixed(2) : "—" },
-    { label: "Price/Book", value: metric.priceToBookAnnual ? metric.priceToBookAnnual.toFixed(2) : "—" },
+    { label: "P/B", value: metric.priceToBookAnnual ? metric.priceToBookAnnual.toFixed(2) : "—" },
   ];
+
+  // Responsive grid: 1 col when very narrow, 2 otherwise
+  const gridCols = containerWidth < 250 ? "grid-cols-1" : "grid-cols-2";
 
   return (
     <WidgetBase title={`${ticker} — Technicals`} onClose={onClose}>
-      <div className="flex h-full flex-col">
+      <div ref={containerRef} className="flex h-full flex-col">
         {/* Ticker edit */}
         <div className="mb-3">
           {isEditing ? (
@@ -125,7 +144,7 @@ export default function TechnicalIndicators({
           </div>
         )}
         {!loading && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className={`grid ${gridCols} gap-2`}>
             {indicators.map((indicator, idx) => (
               <div
                 key={idx}

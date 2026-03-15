@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout/legacy";
 import type { Layouts, Layout } from "react-grid-layout";
 import { Plus } from "lucide-react";
-import { readStorage, storageKeys, writeStorage } from "@/lib/storage";
-import { type WidgetConfig, type WidgetType, WIDGET_PRESETS } from "@/lib/widgetConfig";
+import { type WidgetConfig, type WidgetType } from "@/lib/widgetConfig";
 import AddWidgetModal from "@/components/AddWidgetModal";
 import WidgetBase from "@/components/widgets/WidgetBase";
 // Widgets
@@ -19,36 +18,58 @@ import EarningsCalendar from "@/components/widgets/EarningsCalendar";
 import Watchlist from "@/components/widgets/Watchlist";
 import TechnicalIndicators from "@/components/widgets/TechnicalIndicators";
 import MarketNewsFeed from "@/components/widgets/MarketNewsFeed";
+import CryptoTracker from "@/components/widgets/CryptoTracker";
+import CompanyProfile from "@/components/widgets/CompanyProfile";
+import ForexRates from "@/components/widgets/ForexRates";
+import IPOCalendar from "@/components/widgets/IPOCalendar";
+import InsiderSentiment from "@/components/widgets/InsiderSentiment";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-const LAYOUT_VERSION = 8; // Bump to force fresh layout
-
-// Default sizing per widget type
+// Default sizing per widget type — min sizes prevent unreadable widgets
 const WIDGET_DEFAULTS: Record<WidgetType, { w: number; h: number; minW: number; minH: number }> = {
-  "stock-quote": { w: 4, h: 5, minW: 3, minH: 4 },
-  "price-chart": { w: 8, h: 7, minW: 4, minH: 5 },
-  "news-feed": { w: 4, h: 8, minW: 3, minH: 5 },
-  portfolio: { w: 6, h: 8, minW: 4, minH: 5 },
-  "market-overview": { w: 4, h: 4, minW: 3, minH: 3 },
-  "sector-heatmap": { w: 4, h: 4, minW: 3, minH: 3 },
-  "earnings-calendar": { w: 6, h: 5, minW: 4, minH: 4 },
-  watchlist: { w: 4, h: 7, minW: 3, minH: 5 },
-  "technical-indicators": { w: 6, h: 5, minW: 4, minH: 4 },
-  "market-news": { w: 4, h: 8, minW: 3, minH: 5 },
+  "stock-quote":          { w: 4, h: 5,  minW: 3, minH: 4 },
+  "price-chart":          { w: 8, h: 7,  minW: 4, minH: 5 },
+  "news-feed":            { w: 4, h: 8,  minW: 3, minH: 5 },
+  portfolio:              { w: 8, h: 10, minW: 4, minH: 6 },
+  "market-overview":      { w: 4, h: 5,  minW: 3, minH: 4 },
+  "sector-heatmap":       { w: 4, h: 5,  minW: 3, minH: 4 },
+  "earnings-calendar":    { w: 6, h: 5,  minW: 4, minH: 4 },
+  watchlist:              { w: 4, h: 7,  minW: 3, minH: 5 },
+  "technical-indicators": { w: 4, h: 5,  minW: 3, minH: 4 },
+  "market-news":          { w: 4, h: 8,  minW: 3, minH: 5 },
+  "crypto-tracker":       { w: 4, h: 7,  minW: 3, minH: 5 },
+  "company-profile":      { w: 4, h: 7,  minW: 3, minH: 5 },
+  "forex-rates":          { w: 4, h: 7,  minW: 3, minH: 5 },
+  "ipo-calendar":         { w: 4, h: 6,  minW: 3, minH: 4 },
+  "insider-sentiment":    { w: 6, h: 6,  minW: 4, minH: 5 },
 };
 
 // Default widget settings per type
 function getDefaultSettings(type: WidgetType): Record<string, unknown> {
   switch (type) {
-    case "stock-quote": return { ticker: "AAPL" };
-    case "price-chart": return { ticker: "MSFT", timeRange: "1M" };
-    case "news-feed": return { ticker: "AAPL" };
-    case "watchlist": return { tickers: ["AAPL", "MSFT", "GOOGL"] };
+    case "stock-quote":          return { ticker: "AAPL" };
+    case "price-chart":          return { ticker: "MSFT", timeRange: "1M" };
+    case "news-feed":            return { ticker: "AAPL" };
+    case "watchlist":            return { tickers: ["AAPL", "MSFT", "GOOGL"] };
     case "technical-indicators": return { ticker: "AAPL" };
-    default: return {};
+    case "company-profile":      return { ticker: "AAPL" };
+    case "insider-sentiment":    return { ticker: "AAPL" };
+    default:                     return {};
   }
 }
+
+// Default widgets — balanced layout optimised for Finnhub free tier (no price-chart)
+export const defaultWidgets: WidgetConfig[] = [
+  { id: "stock-quote-1", type: "stock-quote", x: 0, y: 0, w: 4, h: 5, minW: 3, minH: 4, settings: { ticker: "AAPL" } },
+  { id: "stock-quote-2", type: "stock-quote", x: 4, y: 0, w: 4, h: 5, minW: 3, minH: 4, settings: { ticker: "MSFT" } },
+  { id: "market-overview-1", type: "market-overview", x: 8, y: 0, w: 4, h: 5, minW: 3, minH: 4, settings: {} },
+  { id: "watchlist-1", type: "watchlist", x: 0, y: 5, w: 4, h: 7, minW: 3, minH: 5, settings: { tickers: ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"] } },
+  { id: "sector-heatmap-1", type: "sector-heatmap", x: 4, y: 5, w: 4, h: 5, minW: 3, minH: 4, settings: {} },
+  { id: "technical-1", type: "technical-indicators", x: 8, y: 5, w: 4, h: 5, minW: 3, minH: 4, settings: { ticker: "AAPL" } },
+  { id: "portfolio-1", type: "portfolio", x: 0, y: 12, w: 8, h: 10, minW: 4, minH: 6, settings: {} },
+  { id: "market-news-1", type: "market-news", x: 8, y: 10, w: 4, h: 10, minW: 3, minH: 5, settings: {} },
+];
 
 // Convert widget configs to react-grid-layout format
 function configsToLayouts(widgets: WidgetConfig[]): Layouts {
@@ -73,55 +94,19 @@ function configsToLayouts(widgets: WidgetConfig[]): Layouts {
   return layouts;
 }
 
-// Default widgets — balanced layout optimised for Finnhub free tier
-const defaultWidgets: WidgetConfig[] = [
-  {
-    id: "stock-price-1",
-    type: "stock-quote",
-    x: 0, y: 0,
-    w: 4, h: 5, minW: 3, minH: 4,
-    settings: { ticker: "AAPL" },
-  },
-  {
-    id: "watchlist-1",
-    type: "watchlist",
-    x: 4, y: 0,
-    w: 4, h: 7, minW: 3, minH: 5,
-    settings: { tickers: ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"] },
-  },
-  {
-    id: "portfolio-1",
-    type: "portfolio",
-    x: 8, y: 0,
-    w: 4, h: 8, minW: 4, minH: 5,
-    settings: {},
-  },
-  {
-    id: "news-feed-1",
-    type: "news-feed",
-    x: 0, y: 5,
-    w: 4, h: 8, minW: 3, minH: 5,
-    settings: { ticker: "AAPL" },
-  },
-  {
-    id: "market-news-1",
-    type: "market-news",
-    x: 4, y: 7,
-    w: 4, h: 8, minW: 3, minH: 5,
-    settings: {},
-  },
-];
-
 type DashboardGridProps = {
   apiKey: string;
+  widgets: WidgetConfig[];
+  onWidgetsChange: (widgets: WidgetConfig[]) => void;
   onStockSelect?: (symbol: string) => void;
 };
 
 export default function DashboardGrid({
   apiKey,
+  widgets,
+  onWidgetsChange,
   onStockSelect,
 }: DashboardGridProps) {
-  const [widgets, setWidgets] = useState<WidgetConfig[]>(defaultWidgets);
   const [mounted, setMounted] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
 
@@ -133,56 +118,14 @@ export default function DashboardGrid({
     widgetsRef.current = widgets;
   }, [widgets]);
 
-  // Load saved widget configs on mount
+  // Delay mount to let layout settle
   useEffect(() => {
-    const savedVersion = readStorage<number>("findash-layout-version", 0);
-    const savedPreset = readStorage<string>(storageKeys.layoutPreset, "");
-    const savedWidgets = readStorage<WidgetConfig[]>(storageKeys.widgetConfig, []);
-
-    if (savedPreset && WIDGET_PRESETS[savedPreset] && savedWidgets.length === 0) {
-      const preset = WIDGET_PRESETS[savedPreset];
-      const presetWidgets: WidgetConfig[] = preset.widgets.map((w, i) => ({
-        ...w,
-        id: `${w.type}-${Date.now()}-${i}`,
-      }));
-      setWidgets(presetWidgets);
-      writeStorage(storageKeys.widgetConfig, presetWidgets);
-      writeStorage("findash-layout-version", LAYOUT_VERSION);
-    } else if (savedVersion < LAYOUT_VERSION) {
-      // Version mismatch — reset to clean defaults
-      setWidgets(defaultWidgets);
-      writeStorage(storageKeys.widgetConfig, defaultWidgets);
-      writeStorage("findash-layout-version", LAYOUT_VERSION);
-    } else if (savedWidgets.length > 0) {
-      // Ensure each saved widget has proper minW/minH from defaults
-      const migrated = savedWidgets.map((w) => {
-        const defaults = WIDGET_DEFAULTS[w.type] || { w: 4, h: 5, minW: 3, minH: 4 };
-        return {
-          ...w,
-          w: w.w || defaults.w,
-          h: w.h || defaults.h,
-          minW: w.minW || defaults.minW,
-          minH: w.minH || defaults.minH,
-        };
-      });
-      setWidgets(migrated);
-    } else {
-      setWidgets(defaultWidgets);
-      writeStorage(storageKeys.widgetConfig, defaultWidgets);
-    }
-
-    // Delay mount to give time for state to settle before rendering the grid
+    setMounted(false);
     requestAnimationFrame(() => setMounted(true));
   }, []);
 
   const layouts = useMemo(() => configsToLayouts(widgets), [widgets]);
 
-  /**
-   * Persist layout after user drag/resize.
-   * We intentionally use onDragStop / onResizeStop instead of onLayoutChange
-   * because onLayoutChange fires on EVERY re-layout (including initial render,
-   * responsive breakpoint changes, etc.) which overwrites saved positions.
-   */
   const saveCurrentLayout = useCallback((newLayout: Layout[]) => {
     const currentWidgets = widgetsRef.current;
     const configMap = new Map(currentWidgets.map((w) => [w.id, w]));
@@ -204,13 +147,10 @@ export default function DashboardGrid({
       }
     });
 
-    // Only save if we didn't lose any widgets
     if (updated.length === currentWidgets.length) {
-      setWidgets(updated);
-      writeStorage(storageKeys.widgetConfig, updated);
-      writeStorage("findash-layout-version", LAYOUT_VERSION);
+      onWidgetsChange(updated);
     }
-  }, []);
+  }, [onWidgetsChange]);
 
   const handleDragStop = useCallback(
     (layout: Layout[]) => saveCurrentLayout(layout),
@@ -223,34 +163,39 @@ export default function DashboardGrid({
   );
 
   const handleAddWidget = useCallback((type: WidgetType) => {
-    setWidgets((prev) => {
-      const defaults = WIDGET_DEFAULTS[type] || { w: 4, h: 5, minW: 3, minH: 4 };
-      const settings = getDefaultSettings(type);
-      const maxY = prev.length > 0 ? Math.max(...prev.map((w) => w.y + w.h)) : 0;
-      
-      const newWidget: WidgetConfig = {
-        id: `${type}-${Date.now()}`,
-        type,
-        x: 0,
-        y: maxY,
-        ...defaults,
-        settings,
-      };
-      
-      const updated = [...prev, newWidget];
-      writeStorage(storageKeys.widgetConfig, updated);
-      writeStorage("findash-layout-version", LAYOUT_VERSION);
-      return updated;
-    });
-  }, []);
+    const defaults = WIDGET_DEFAULTS[type] || { w: 4, h: 5, minW: 3, minH: 4 };
+    const settings = getDefaultSettings(type);
+    const currentWidgets = widgetsRef.current;
+    const maxY = currentWidgets.length > 0 ? Math.max(...currentWidgets.map((w) => w.y + w.h)) : 0;
+    
+    const newWidget: WidgetConfig = {
+      id: `${type}-${Date.now()}`,
+      type,
+      x: 0,
+      y: maxY,
+      ...defaults,
+      settings,
+    };
+    
+    onWidgetsChange([...currentWidgets, newWidget]);
+  }, [onWidgetsChange]);
 
   const handleRemoveWidget = useCallback((id: string) => {
-    setWidgets((prev) => {
-      const updated = prev.filter((w) => w.id !== id);
-      writeStorage(storageKeys.widgetConfig, updated);
-      return updated;
-    });
-  }, []);
+    const currentWidgets = widgetsRef.current;
+    onWidgetsChange(currentWidgets.filter((w) => w.id !== id));
+  }, [onWidgetsChange]);
+
+  const handleUpdateWidgetSettings = useCallback(
+    (id: string, newSettings: Record<string, unknown>) => {
+      const currentWidgets = widgetsRef.current;
+      onWidgetsChange(
+        currentWidgets.map((w) =>
+          w.id === id ? { ...w, settings: { ...w.settings, ...newSettings } } : w
+        )
+      );
+    },
+    [onWidgetsChange]
+  );
 
   const renderWidget = (config: WidgetConfig) => {
     const commonProps = { apiKey };
@@ -263,17 +208,7 @@ export default function DashboardGrid({
             {...commonProps}
             ticker={(config.settings.ticker as string) || "AAPL"}
             onClose={onClose}
-            onTickerChange={(ticker) => {
-              setWidgets((prev) => {
-                const updated = prev.map((w) =>
-                  w.id === config.id
-                    ? { ...w, settings: { ...w.settings, ticker } }
-                    : w
-                );
-                writeStorage(storageKeys.widgetConfig, updated);
-                return updated;
-              });
-            }}
+            onTickerChange={(ticker) => handleUpdateWidgetSettings(config.id, { ticker })}
           />
         );
       case "price-chart":
@@ -291,6 +226,7 @@ export default function DashboardGrid({
             {...commonProps}
             ticker={(config.settings.ticker as string) || "AAPL"}
             onClose={onClose}
+            onTickerChange={(ticker) => handleUpdateWidgetSettings(config.id, { ticker })}
           />
         );
       case "portfolio":
@@ -319,6 +255,30 @@ export default function DashboardGrid({
         );
       case "market-news":
         return <MarketNewsFeed {...commonProps} onClose={onClose} />;
+      case "crypto-tracker":
+        return <CryptoTracker {...commonProps} onClose={onClose} />;
+      case "company-profile":
+        return (
+          <CompanyProfile
+            {...commonProps}
+            ticker={(config.settings.ticker as string) || "AAPL"}
+            onClose={onClose}
+            onTickerChange={(ticker) => handleUpdateWidgetSettings(config.id, { ticker })}
+          />
+        );
+      case "forex-rates":
+        return <ForexRates {...commonProps} onClose={onClose} />;
+      case "ipo-calendar":
+        return <IPOCalendar {...commonProps} onClose={onClose} />;
+      case "insider-sentiment":
+        return (
+          <InsiderSentiment
+            {...commonProps}
+            ticker={(config.settings.ticker as string) || "AAPL"}
+            onClose={onClose}
+            onTickerChange={(ticker) => handleUpdateWidgetSettings(config.id, { ticker })}
+          />
+        );
       default:
         return (
           <WidgetBase
@@ -373,7 +333,6 @@ export default function DashboardGrid({
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         onAdd={handleAddWidget}
-        existingTypes={widgets.map((w) => w.type)}
       />
     </>
   );

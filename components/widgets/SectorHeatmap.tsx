@@ -11,11 +11,11 @@ type SectorHeatmapProps = {
 };
 
 const SECTORS = [
-  { symbol: "XLK", name: "Tech" },
+  { symbol: "XLK", name: "Technology" },
   { symbol: "XLF", name: "Finance" },
   { symbol: "XLE", name: "Energy" },
-  { symbol: "XLV", name: "Health" },
-  { symbol: "XLY", name: "Consumer" },
+  { symbol: "XLV", name: "Healthcare" },
+  { symbol: "XLY", name: "Consumer Disc." },
   { symbol: "XLI", name: "Industrial" },
   { symbol: "XLB", name: "Materials" },
   { symbol: "XLU", name: "Utilities" },
@@ -25,6 +25,8 @@ const SECTORS = [
 export default function SectorHeatmap({ apiKey, onClose }: SectorHeatmapProps) {
   const [quotes, setQuotes] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(400);
+  const containerRef = useRef<HTMLDivElement>(null);
   const clientRef = useRef<ApiClient | null>(null);
 
   useEffect(() => {
@@ -32,6 +34,18 @@ export default function SectorHeatmap({ apiKey, onClose }: SectorHeatmapProps) {
       clientRef.current = new ApiClient({ apiKey });
     }
   }, [apiKey]);
+
+  // Observe container width
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const loadData = async () => {
     if (!clientRef.current) return;
@@ -79,9 +93,12 @@ export default function SectorHeatmap({ apiKey, onClose }: SectorHeatmapProps) {
     return "bg-[var(--accent-red)]";
   };
 
+  // Responsive: 2 cols when narrow, 3 cols otherwise
+  const gridCols = containerWidth < 280 ? "grid-cols-2" : "grid-cols-3";
+
   return (
     <WidgetBase title="Sector Heatmap" onClose={onClose}>
-      <div className="grid grid-cols-3 gap-2">
+      <div ref={containerRef} className={`grid ${gridCols} gap-2`}>
         {SECTORS.map((sector) => {
           const quote = quotes[sector.symbol];
           const changePercent = quote?.dp || 0;
@@ -90,16 +107,16 @@ export default function SectorHeatmap({ apiKey, onClose }: SectorHeatmapProps) {
           return (
             <div
               key={sector.symbol}
-              className={`${colorClass} flex flex-col items-center justify-center rounded-lg p-3 text-center transition-transform hover:scale-105`}
+              className={`${colorClass} flex flex-col items-center justify-center rounded-lg p-2 text-center transition-transform hover:scale-105`}
             >
-              <div className="mono text-xs font-semibold text-white">
+              <div className="mono text-[11px] font-semibold text-white">
                 {sector.symbol}
               </div>
-              <div className="text-[10px] text-white/80">{sector.name}</div>
+              <div className="text-[9px] leading-tight text-white/80">{sector.name}</div>
               {loading && !quote ? (
                 <div className="skeleton mt-1 h-4 w-12 bg-white/20" />
               ) : quote ? (
-                <div className="mt-1 text-xs font-semibold text-white">
+                <div className="mt-0.5 text-xs font-semibold text-white">
                   {changePercent >= 0 ? "+" : ""}
                   {formatPercent(changePercent)}
                 </div>

@@ -23,7 +23,20 @@ export default function MarketOverview({ apiKey, onClose }: MarketOverviewProps)
   const [quotes, setQuotes] = useState<Record<string, any>>({});
   const [sparklines, setSparklines] = useState<Record<string, number[]>>({});
   const [loading, setLoading] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(400);
+  const containerRef = useRef<HTMLDivElement>(null);
   const clientRef = useRef<ApiClient | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (apiKey) {
@@ -99,7 +112,7 @@ export default function MarketOverview({ apiKey, onClose }: MarketOverviewProps)
 
   return (
     <WidgetBase title="Market Overview" onClose={onClose}>
-      <div className="space-y-2">
+      <div ref={containerRef} className="space-y-2">
         {INDICES.map((index) => {
           const quote = quotes[index.symbol];
           const sparkline = sparklines[index.symbol] || [];
@@ -137,7 +150,7 @@ export default function MarketOverview({ apiKey, onClose }: MarketOverviewProps)
                       {formatPercent(quote.dp)}
                     </div>
                   </div>
-                  {sparkline.length > 0 && (
+                  {sparkline.length > 0 && containerWidth >= 260 && (
                     <div className="h-8 w-16">
                       <ChartDeferredRender>
                         <ResponsiveContainer width="100%" height="100%">

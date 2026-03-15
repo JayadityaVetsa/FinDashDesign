@@ -234,3 +234,117 @@ export async function searchSymbol(
   );
   return data.result || [];
 }
+
+/* ------------------------------------------------------------------ */
+/*  Crypto endpoints (free tier)                                       */
+/* ------------------------------------------------------------------ */
+
+export type FinnhubCryptoSymbol = {
+  description: string;
+  displaySymbol: string;
+  symbol: string;
+};
+
+export async function getCryptoSymbols(
+  exchange: string,
+  apiKey: string
+): Promise<FinnhubCryptoSymbol[]> {
+  return fetchFinnhub<FinnhubCryptoSymbol[]>(
+    "/crypto/symbol",
+    { exchange },
+    apiKey
+  );
+}
+
+export async function getCryptoCandle(
+  symbol: string,
+  resolution: "1" | "5" | "15" | "30" | "60" | "D" | "W" | "M",
+  from: number,
+  to: number,
+  apiKey: string
+): Promise<FinnhubCandle> {
+  return fetchFinnhub<FinnhubCandle>(
+    "/crypto/candle",
+    {
+      symbol,
+      resolution,
+      from: from.toString(),
+      to: to.toString(),
+    },
+    apiKey
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Forex endpoints (free tier)                                        */
+/* ------------------------------------------------------------------ */
+
+export type FinnhubForexRate = {
+  base: string;
+  quote: Record<string, number>;
+};
+
+export async function getForexRates(
+  base: string,
+  apiKey: string
+): Promise<FinnhubForexRate> {
+  return fetchFinnhub<FinnhubForexRate>(
+    "/forex/rates",
+    { base },
+    apiKey
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  IPO Calendar (free tier)                                           */
+/* ------------------------------------------------------------------ */
+
+export type FinnhubIPOEvent = {
+  date: string;
+  exchange: string;
+  name: string;
+  numberOfShares: number;
+  price: string;
+  status: string;
+  symbol: string;
+  totalSharesValue: number;
+};
+
+export async function getIPOCalendar(
+  from: string,
+  to: string,
+  apiKey: string
+): Promise<FinnhubIPOEvent[]> {
+  const data = await fetchFinnhub<{ ipoCalendar: FinnhubIPOEvent[] }>(
+    "/calendar/ipo",
+    { from, to },
+    apiKey
+  );
+  return data.ipoCalendar || [];
+}
+
+/* ------------------------------------------------------------------ */
+/*  Insider Sentiment (free tier)                                      */
+/* ------------------------------------------------------------------ */
+
+export type FinnhubInsiderSentiment = {
+  symbol: string;
+  year: number;
+  month: number;
+  change: number;
+  mspr: number; // Monthly share purchase ratio
+};
+
+export async function getInsiderSentiment(
+  symbol: string,
+  from: string,
+  to: string,
+  apiKey: string
+): Promise<FinnhubInsiderSentiment[]> {
+  const data = await fetchFinnhub<{ data: FinnhubInsiderSentiment[] }>(
+    "/stock/insider-sentiment",
+    { symbol, from, to },
+    apiKey
+  );
+  return data.data || [];
+}

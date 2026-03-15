@@ -72,4 +72,7 @@ export const CACHE_TTL = {
   MARKET_NEWS: 5 * 60 * 1000, // 5 minutes
   EARNINGS: 60 * 60 * 1000, // 1 hour
   SEARCH: 10 * 60 * 1000, // 10 minutes
+  FOREX: 5 * 60 * 1000, // 5 minutes
+  IPO: 60 * 60 * 1000, // 1 hour
+  INSIDER: 60 * 60 * 1000, // 1 hour
 } as const;

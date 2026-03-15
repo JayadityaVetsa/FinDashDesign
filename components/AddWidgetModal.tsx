@@ -7,20 +7,17 @@ type AddWidgetModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (type: WidgetType) => void;
-  existingTypes: WidgetType[];
 };
 
 export default function AddWidgetModal({
   isOpen,
   onClose,
   onAdd,
-  existingTypes,
 }: AddWidgetModalProps) {
   if (!isOpen) return null;
 
-  const availableWidgets = Object.entries(WIDGET_DEFINITIONS).filter(
-    ([type]) => !existingTypes.includes(type as WidgetType)
-  );
+  // All widgets are always available — users can add multiple of the same type
+  const allWidgets = Object.entries(WIDGET_DEFINITIONS);
 
   return (
     <div
@@ -28,13 +25,18 @@ export default function AddWidgetModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-4xl rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-2xl"
+        className="w-full max-w-3xl rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-            Add Widget
-          </h2>
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+              Add Widget
+            </h2>
+            <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+              Choose a widget to add to your dashboard. You can add multiples of the same type.
+            </p>
+          </div>
           <button
             onClick={onClose}
             className="rounded p-1 hover:bg-[var(--bg-secondary)]"
@@ -43,32 +45,31 @@ export default function AddWidgetModal({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {availableWidgets.map(([type, def]) => (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {allWidgets.map(([type, def]) => (
             <button
               key={type}
               onClick={() => {
                 onAdd(type as WidgetType);
                 onClose();
               }}
-              className="group rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-4 text-left transition-all hover:border-[var(--accent-blue)] hover:bg-[var(--bg-card-hover)]"
+              className="group rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-4 text-left transition-all hover:border-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/5"
             >
               <div className="mb-2 text-2xl">{def.icon}</div>
               <div className="text-sm font-semibold text-[var(--text-primary)]">
                 {def.name}
               </div>
-              <div className="mt-1 text-xs text-[var(--text-secondary)]">
+              <div className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
                 {def.description}
               </div>
+              {def.tag && (
+                <span className="mt-2 inline-block rounded-full bg-[var(--accent-blue)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--accent-blue)]">
+                  {def.tag}
+                </span>
+              )}
             </button>
           ))}
         </div>
-
-        {availableWidgets.length === 0 && (
-          <div className="py-8 text-center text-sm text-[var(--text-secondary)]">
-            All available widgets have been added
-          </div>
-        )}
       </div>
     </div>
   );

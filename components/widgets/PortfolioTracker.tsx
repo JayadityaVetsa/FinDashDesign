@@ -87,9 +87,22 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
   const [holdings, setHoldings] = useState<Holding[]>(DEFAULT_HOLDINGS);
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
+  const [containerHeight, setContainerHeight] = useState(400);
+  const containerRef = useRef<HTMLDivElement>(null);
   const clientRef = useRef<ApiClient | null>(null);
   const hasRefreshed = useRef(false);
   const initialized = useRef(false);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerHeight(entry.contentRect.height);
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (apiKey) {
@@ -234,7 +247,7 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
         refresh();
       }}
     >
-      <div className="flex h-full flex-col">
+      <div ref={containerRef} className="flex h-full flex-col">
         {/* Total Value */}
         <div className="mb-3 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3">
           <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
@@ -266,8 +279,8 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
           )}
         </div>
 
-        {/* Donut Chart */}
-        {donutData.length > 0 && (
+        {/* Donut Chart — hidden when widget is very short */}
+        {donutData.length > 0 && containerHeight >= 300 && (
           <div className="mb-3 h-32 min-h-[128px]">
             <ChartDeferredRender>
             <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>

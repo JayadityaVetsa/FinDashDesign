@@ -193,4 +193,53 @@ export class ApiClient {
       CACHE_TTL.SEARCH
     );
   }
+
+  // Crypto
+  async getCryptoCandle(
+    symbol: string,
+    resolution: "1" | "5" | "15" | "30" | "60" | "D" | "W" | "M",
+    from: number,
+    to: number
+  ): Promise<finnhub.FinnhubCandle> {
+    return this.cachedRequest(
+      "/crypto/candle",
+      { symbol, resolution, from: from.toString(), to: to.toString() },
+      () => finnhub.getCryptoCandle(symbol, resolution, from, to, this.apiKey),
+      CACHE_TTL.CANDLE
+    );
+  }
+
+  // Forex
+  async getForexRates(base: string): Promise<finnhub.FinnhubForexRate> {
+    return this.cachedRequest(
+      "/forex/rates",
+      { base },
+      () => finnhub.getForexRates(base, this.apiKey),
+      CACHE_TTL.FOREX
+    );
+  }
+
+  // IPO Calendar
+  async getIPOCalendar(from: string, to: string): Promise<finnhub.FinnhubIPOEvent[]> {
+    return this.cachedRequest(
+      "/calendar/ipo",
+      { from, to },
+      () => finnhub.getIPOCalendar(from, to, this.apiKey),
+      CACHE_TTL.IPO
+    );
+  }
+
+  // Insider Sentiment
+  async getInsiderSentiment(
+    symbol: string,
+    from: string,
+    to: string
+  ): Promise<finnhub.FinnhubInsiderSentiment[]> {
+    return this.cachedRequest(
+      "/stock/insider-sentiment",
+      { symbol, from, to },
+      () => finnhub.getInsiderSentiment(symbol, from, to, this.apiKey),
+      CACHE_TTL.INSIDER
+    );
+  }
 }
