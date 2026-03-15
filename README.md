@@ -1,36 +1,160 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FinDash — Notion-Inspired Financial Dashboard
+
+A sleek, customisable financial dashboard built with **Next.js 16**, **Tailwind CSS 4**, and **Supabase Auth**. Drag, resize, and rearrange real-time market widgets on a free-form grid — think Notion meets Bloomberg Terminal.
+
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38bdf8?logo=tailwindcss)
+![Supabase](https://img.shields.io/badge/Supabase-Auth-3ecf8e?logo=supabase)
+![Finnhub](https://img.shields.io/badge/Finnhub-API-orange)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
+---
+
+## Features
+
+### Dashboard Grid
+- **Drag & drop** widgets anywhere on the grid via grab handles
+- **Resize** any widget by dragging its corner
+- Layout **auto-saves** to `localStorage` and persists across reloads
+- **Add / remove** widgets on the fly from the floating action button
+- Smooth CSS-transform animations and a placeholder preview while dragging
+
+### Widgets (10 built-in)
+| Widget | Description |
+|---|---|
+| **Stock Quote** | Live price, % change, OHLC data, and optional sparkline |
+| **Price Chart** | Candlestick-resolution line chart with 1D–1Y range selector |
+| **Company News** | Sentiment-tagged news feed for any ticker |
+| **Market News** | General financial headlines |
+| **Portfolio Tracker** | Add holdings (ticker / qty / avg cost), live P&L, and donut allocation chart |
+| **Watchlist** | Sortable table of tickers with price, change, high, low, volume |
+| **Market Overview** | Major-index quotes with mini sparklines |
+| **Sector Heatmap** | Color-coded sector performance at a glance |
+| **Earnings Calendar** | Upcoming earnings dates and EPS estimates |
+| **Technical Indicators** | Key financial metrics (P/E, market cap, 52-wk range, etc.) |
+
+### UI / UX
+- **Dark / Light theme** with system-preference detection and manual toggle
+- Notion-style hover-reveal drag handle and action buttons
+- Loading skeletons, price-pulse animations, and glass-morphism cards
+- **Command palette** (`Ctrl+K` / `⌘K`) for instant stock search
+- Responsive breakpoints (`lg` / `md` / `sm`) — works on tablets too
+- Global rate-limit toast notifications
+
+### Data & Persistence
+- All market data from [Finnhub](https://finnhub.io/) (free tier supported)
+- Built-in API client with **request-level caching** and **deduplication**
+- Widget configs, layouts, and portfolio holdings saved to `localStorage` with version migration
+- API key entered once via onboarding flow or header input — never leaves the browser
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Styling | Tailwind CSS 4 + CSS custom properties |
+| Auth | Supabase (email / password) |
+| Data | Finnhub REST API |
+| Charts | Recharts 3 |
+| Grid | react-grid-layout 2 |
+| Icons | Lucide React |
+| Language | TypeScript 5 |
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- **Node.js** ≥ 18
+- A free **Finnhub** API key — [register here](https://finnhub.io/register)
+- A **Supabase** project (for auth) — [create one](https://supabase.com/dashboard)
+
+### 1. Clone & install
+
+```bash
+git clone https://github.com/<your-user>/FinDashDesign.git
+cd FinDashDesign
+npm install
+```
+
+### 2. Configure environment
+
+Create a `.env.local` (or `.env`) file in the project root:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+```
+
+> **Note:** The Finnhub API key is entered through the app UI (onboarding flow) and stored in the browser's `localStorage`. It never touches the server.
+
+### 3. Run the dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). You'll be guided through:
+1. **Login / Sign up** (Supabase auth)
+2. **Onboarding** — paste your Finnhub API key (verified live)
+3. **Dashboard** — start dragging widgets!
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Structure
 
-## Learn More
+```
+FinDashDesign/
+├── app/
+│   ├── (auth)/login/       # Login / sign-up page
+│   ├── dashboard/          # Main dashboard page
+│   ├── onboarding/         # First-time setup flow
+│   ├── clear-storage/      # Dev utility to reset localStorage
+│   ├── globals.css         # Theme variables & grid overrides
+│   └── layout.tsx          # Root layout + font loading
+├── components/
+│   ├── DashboardGrid.tsx   # react-grid-layout orchestrator
+│   ├── Header.tsx          # Top bar (search, API key, theme, sign-out)
+│   ├── OnboardingFlow.tsx  # 3-step onboarding wizard
+│   ├── CommandPalette.tsx  # ⌘K stock search modal
+│   ├── ChartDeferredRender.tsx  # Stable chart rendering wrapper
+│   └── widgets/            # All 10 widget components
+├── lib/
+│   ├── finnhub.ts          # Finnhub API types & fetch helpers
+│   ├── apiClient.ts        # Caching + dedup API client
+│   ├── cache.ts            # localStorage cache with TTL
+│   ├── storage.ts          # Typed localStorage helpers
+│   ├── formatters.ts       # Currency / number / percent formatters
+│   ├── widgetConfig.ts     # Widget type definitions & presets
+│   └── supabaseClient.ts   # Supabase client singleton
+└── hooks/
+    └── useKeyboardShortcuts.ts
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Available Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Command | Description |
+|---|---|
+| `npm run dev` | Start dev server with Turbopack |
+| `npm run build` | Production build |
+| `npm run start` | Serve the production build |
+| `npm run lint` | Run ESLint |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Configuration Notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **React Strict Mode** is disabled in `next.config.ts` to prevent double-render issues with Recharts dimension calculations.
+- **Layout version** (`LAYOUT_VERSION` in `DashboardGrid.tsx`) is bumped when default widget positions change — this auto-resets stale layouts in `localStorage`.
+- **Portfolio version** (`PORTFOLIO_VERSION` in `PortfolioTracker.tsx`) works similarly for saved holdings.
+- The `ChartDeferredRender` wrapper delays Recharts mounting until the container has valid dimensions, preventing the infamous `width(-1) height(-1)` error.
+
+---
+
+## License
+
+MIT — use it however you like.

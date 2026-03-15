@@ -1,26 +1,224 @@
 @import "tailwindcss";
+@import "react-grid-layout/css/styles.css";
+@import "react-resizable/css/styles.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Premium Financial Terminal Color Palette */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #111118;
+  --bg-card: #16161f;
+  --bg-card-hover: #1c1c28;
+  --border: #ffffff0f;
+  --border-active: #ffffff20;
+  --accent-blue: #4f8ef7;
+  --accent-green: #22c55e;
+  --accent-red: #ef4444;
+  --accent-amber: #f59e0b;
+  --text-primary: #f0f0f5;
+  --text-secondary: #8888aa;
+  --text-muted: #555566;
+}
+
+/* Light mode (optional, but keeping for theme toggle) */
+:root:not(.dark) {
+  --bg-primary: #fafafa;
+  --bg-secondary: #f5f5f5;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f9f9f9;
+  --border: #0000000f;
+  --border-active: #00000020;
+  --accent-blue: #2563eb;
+  --accent-green: #16a34a;
+  --accent-red: #dc2626;
+  --accent-amber: #d97706;
+  --text-primary: #0a0a0f;
+  --text-secondary: #555566;
+  --text-muted: #8888aa;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-card: var(--bg-card);
+  --color-bg-card-hover: var(--bg-card-hover);
+  --color-border: var(--border);
+  --color-border-active: var(--border-active);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-green: var(--accent-green);
+  --color-accent-red: var(--accent-red);
+  --color-accent-amber: var(--accent-amber);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle radial glow in dark mode */
+.dark body::before {
+  content: "";
+  position: fixed;
+  top: -30%;
+  left: -10%;
+  width: 50%;
+  height: 60%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(79, 142, 247, 0.04) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Typography utilities */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: var(--font-jetbrains-mono), monospace;
+}
+
+/* Card base styles */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.card:hover {
+  border-color: var(--border-active);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Widget drag handle */
+.widget-handle {
+  cursor: grab;
+  user-select: none;
+}
+
+.widget-handle:active {
+  cursor: grabbing;
+}
+
+/* --- react-grid-layout overrides --- */
+
+.react-grid-item.react-grid-placeholder {
+  background: color-mix(in srgb, var(--accent-blue) 15%, transparent) !important;
+  border: 2px dashed var(--accent-blue) !important;
+  border-radius: 12px !important;
+  opacity: 1 !important;
+}
+
+.react-grid-item {
+  transition: transform 0.18s ease-out, width 0.18s ease-out, height 0.18s ease-out !important;
+}
+
+.react-grid-item.cssTransforms {
+  transition: transform 0.18s ease-out, width 0.18s ease-out, height 0.18s ease-out !important;
+}
+
+.react-grid-item.react-draggable-dragging {
+  transition: none !important;
+  z-index: 100 !important;
+  opacity: 0.95;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--accent-blue) !important;
+  border-radius: 12px;
+}
+
+.react-grid-item.resizing {
+  transition: none !important;
+  z-index: 100 !important;
+  opacity: 0.95;
+}
+
+.react-grid-item > .react-resizable-handle {
+  width: 20px !important;
+  height: 20px !important;
+  bottom: 4px !important;
+  right: 4px !important;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.react-grid-item:hover > .react-resizable-handle {
+  opacity: 0.6;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  width: 8px !important;
+  height: 8px !important;
+  border-right: 2px solid var(--text-secondary) !important;
+  border-bottom: 2px solid var(--text-secondary) !important;
+  right: 6px !important;
+  bottom: 6px !important;
+}
+
+/* Loading skeleton animation */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.skeleton {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* Price pulse animation */
+@keyframes price-pulse-green {
+  0% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(34, 197, 94, 0.2);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes price-pulse-red {
+  0% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.price-pulse-green {
+  animation: price-pulse-green 0.6s ease-out;
+}
+
+.price-pulse-red {
+  animation: price-pulse-red 0.6s ease-out;
 }
