@@ -177,7 +177,7 @@ export default function InsiderSentiment({
                       borderRadius: "8px",
                       fontSize: "11px",
                     }}
-                    formatter={(value: number) => [value.toFixed(4), "MSPR"]}
+                    formatter={(value) => [Number(value).toFixed(4), "MSPR"]}
                     labelFormatter={(label) => `Month: ${label}`}
                   />
                   <Bar dataKey="mspr" radius={[4, 4, 0, 0]}>

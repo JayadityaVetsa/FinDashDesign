@@ -258,14 +258,14 @@ export default function PriceChart({
                     borderRadius: "8px",
                     fontSize: "12px",
                   }}
-                  formatter={(value: number, name: string) => {
+                  formatter={(value, name) => {
                     if (name === "close" || name === "high" || name === "low" || name === "open") {
-                      return formatCurrency(value);
+                      return formatCurrency(Number(value));
                     }
-                    return (value || 0).toLocaleString();
+                    return (Number(value) || 0).toLocaleString();
                   }}
-                  labelFormatter={(label: Date) =>
-                    label.toLocaleString("en-US", {
+                  labelFormatter={(label) =>
+                    new Date(label as any).toLocaleString("en-US", {
                       dateStyle: "medium",
                       timeStyle: "short",
                     })

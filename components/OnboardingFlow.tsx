@@ -3,20 +3,32 @@
 import { useState } from "react";
 import { Check, ExternalLink, ArrowRight } from "lucide-react";
 import { ApiClient } from "@/lib/apiClient";
-import { WIDGET_PRESETS, type WidgetType } from "@/lib/widgetConfig";
-import { writeStorage, storageKeys } from "@/lib/storage";
+import { WIDGET_PRESETS } from "@/lib/widgetConfig";
+import { createSeedDashboards } from "@/lib/widgetConfig";
+import {
+  upsertProfile,
+  seedDashboards,
+} from "@/lib/supabaseData";
 
 type OnboardingFlowProps = {
-  onComplete: (apiKey: string, preset: string) => void;
+  userId: string;
+  onComplete: () => void;
 };
 
-export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+export default function OnboardingFlow({
+  userId,
+  onComplete,
+}: OnboardingFlowProps) {
   const [step, setStep] = useState(1);
   const [apiKey, setApiKey] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
+  /* ---------------------------------------------------------------- */
+  /*  Step 2 — verify API key                                         */
+  /* ---------------------------------------------------------------- */
   const handleVerify = async () => {
     if (!apiKey.trim()) {
       setVerifyError("Please enter an API key");
@@ -28,8 +40,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
     try {
       const client = new ApiClient({ apiKey: apiKey.trim() });
-      await client.getQuote("AAPL"); // Test with a simple call
-      setStep(3); // Advance to preset selection
+      await client.getQuote("AAPL"); // quick validation call
+      setStep(3);
     } catch (error: any) {
       setVerifyError(error.message || "Invalid API key");
     } finally {
@@ -37,17 +49,44 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   };
 
-  const handlePresetSelect = (presetKey: string) => {
-    setSelectedPreset(presetKey);
-  };
-
-  const handleComplete = () => {
+  /* ---------------------------------------------------------------- */
+  /*  Step 3 — save everything to Supabase and finish                  */
+  /* ---------------------------------------------------------------- */
+  const handleComplete = async () => {
     if (!selectedPreset) return;
-    writeStorage(storageKeys.finnhubKey, apiKey.trim());
-    writeStorage(storageKeys.layoutPreset, selectedPreset);
-    onComplete(apiKey.trim(), selectedPreset);
+
+    setSaving(true);
+    try {
+      // 1. Save profile (API key + mark onboarding complete)
+      await upsertProfile(userId, {
+        finnhub_key: apiKey.trim(),
+        onboarding_completed: true,
+      });
+
+      // 2. Seed dashboards for this user
+      const seeds = createSeedDashboards();
+      const created = await seedDashboards(userId, seeds);
+
+      // 3. Set the first dashboard as active
+      if (created.length > 0) {
+        await upsertProfile(userId, {
+          active_dashboard_id: created[0].id,
+        });
+      }
+
+      onComplete();
+    } catch (err: any) {
+      console.error("Onboarding save failed:", err);
+      setVerifyError(
+        "Failed to save your settings. Please try again."
+      );
+      setSaving(false);
+    }
   };
 
+  /* ---------------------------------------------------------------- */
+  /*  Render                                                           */
+  /* ---------------------------------------------------------------- */
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg-primary)] px-4">
       <div className="w-full max-w-2xl">
@@ -56,7 +95,30 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-blue)] text-2xl font-bold text-white shadow-lg">
             F
           </div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)]">FinDash</h1>
+          <div className="flex flex-col">
+            <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+              FinDash
+            </h1>
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--text-muted)]">
+              Set up your workspace
+            </p>
+          </div>
+        </div>
+
+        {/* Step indicator */}
+        <div className="mb-6 flex items-center justify-center gap-2">
+          {[1, 2, 3].map((s) => (
+            <div
+              key={s}
+              className={`h-1.5 rounded-full transition-all ${
+                s === step
+                  ? "w-8 bg-[var(--accent-blue)]"
+                  : s < step
+                  ? "w-4 bg-[var(--accent-blue)]/50"
+                  : "w-4 bg-[var(--border)]"
+              }`}
+            />
+          ))}
         </div>
 
         {/* Step 1: Get API Key */}
@@ -67,7 +129,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 Get your free Finnhub API key
               </h2>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                FinDash uses Finnhub to fetch real-time financial data. You'll need a free API key to get started.
+                FinDash uses Finnhub to fetch real-time financial data. You&apos;ll
+                need a free API key to get started.
               </p>
             </div>
             <a
@@ -98,7 +161,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 Enter your API key
               </h2>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                Paste your Finnhub API key below. We'll verify it's working.
+                Paste your Finnhub API key below. We&apos;ll verify it&apos;s working.
               </p>
             </div>
             <div className="space-y-4">
@@ -119,6 +182,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 {verifyError && (
                   <p className="mt-2 text-sm text-[var(--accent-red)]">
                     {verifyError}
+                  </p>
+                )}
+                {!verifyError && (
+                  <p className="mt-2 text-xs text-[var(--text-muted)]">
+                    Your API key is stored securely in your Supabase profile and
+                    is never shared with third parties.
                   </p>
                 )}
               </div>
@@ -147,14 +216,15 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 Choose your investor style
               </h2>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                Select a layout preset that matches how you invest.
+                Pick a starting preset. You can always add, remove, or rearrange
+                widgets later.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               {Object.entries(WIDGET_PRESETS).map(([key, preset]) => (
                 <button
                   key={key}
-                  onClick={() => handlePresetSelect(key)}
+                  onClick={() => setSelectedPreset(key)}
                   className={`rounded-lg border p-4 text-left transition-all ${
                     selectedPreset === key
                       ? "border-[var(--accent-blue)] bg-[var(--accent-blue)]/10"
@@ -184,11 +254,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </button>
               <button
                 onClick={handleComplete}
-                disabled={!selectedPreset}
+                disabled={!selectedPreset || saving}
                 className="flex items-center gap-2 rounded-lg bg-[var(--accent-blue)] px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
-                Complete Setup
-                <ArrowRight className="h-4 w-4" />
+                {saving ? "Saving..." : "Complete Setup"}
+                {!saving && <ArrowRight className="h-4 w-4" />}
               </button>
             </div>
           </div>

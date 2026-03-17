@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout/legacy";
-import type { Layouts, Layout } from "react-grid-layout";
+type LayoutItem = {
+  readonly i: string;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+  readonly minW?: number;
+  readonly minH?: number;
+};
+type Layouts = { [P: string]: LayoutItem[] };
 import { Plus } from "lucide-react";
 import { type WidgetConfig, type WidgetType } from "@/lib/widgetConfig";
 import AddWidgetModal from "@/components/AddWidgetModal";
@@ -77,7 +86,7 @@ function configsToLayouts(widgets: WidgetConfig[]): Layouts {
   
   widgets.forEach((widget) => {
     const defaults = WIDGET_DEFAULTS[widget.type] || { w: 4, h: 5, minW: 3, minH: 4 };
-    const layoutItem: Layout = {
+    const layoutItem: LayoutItem = {
       i: widget.id,
       x: widget.x,
       y: widget.y,
@@ -126,7 +135,7 @@ export default function DashboardGrid({
 
   const layouts = useMemo(() => configsToLayouts(widgets), [widgets]);
 
-  const saveCurrentLayout = useCallback((newLayout: Layout[]) => {
+  const saveCurrentLayout = useCallback((newLayout: readonly LayoutItem[]) => {
     const currentWidgets = widgetsRef.current;
     const configMap = new Map(currentWidgets.map((w) => [w.id, w]));
     const updated: WidgetConfig[] = [];
@@ -153,12 +162,12 @@ export default function DashboardGrid({
   }, [onWidgetsChange]);
 
   const handleDragStop = useCallback(
-    (layout: Layout[]) => saveCurrentLayout(layout),
+    (layout: readonly LayoutItem[]) => saveCurrentLayout(layout),
     [saveCurrentLayout]
   );
 
   const handleResizeStop = useCallback(
-    (layout: Layout[]) => saveCurrentLayout(layout),
+    (layout: readonly LayoutItem[]) => saveCurrentLayout(layout),
     [saveCurrentLayout]
   );
 

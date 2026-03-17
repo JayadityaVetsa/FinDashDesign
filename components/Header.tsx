@@ -11,6 +11,7 @@ type HeaderProps = {
   onSignOut: () => void;
   onToggleSidebar?: () => void;
   sidebarCollapsed?: boolean;
+  onThemeChange?: (theme: string) => void;
 };
 
 export default function Header({
@@ -20,6 +21,7 @@ export default function Header({
   onSignOut,
   onToggleSidebar,
   sidebarCollapsed,
+  onThemeChange,
 }: HeaderProps) {
   const [showKey, setShowKey] = useState(false);
   const [isDark, setIsDark] = useState(false);
@@ -34,13 +36,14 @@ export default function Header({
   const toggleTheme = () => {
     const next = !isDark;
     setIsDark(next);
+    const themeName = next ? "dark" : "light";
     if (next) {
       document.documentElement.classList.add("dark");
-      localStorage.setItem("findash-theme", "dark");
     } else {
       document.documentElement.classList.remove("dark");
-      localStorage.setItem("findash-theme", "light");
     }
+    localStorage.setItem("findash-theme", themeName);
+    onThemeChange?.(themeName);
   };
 
   return (

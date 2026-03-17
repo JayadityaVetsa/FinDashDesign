@@ -25,13 +25,18 @@ export default function AuthGate({ children }: AuthGateProps) {
 
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
+
+      // If signed out, redirect to login
+      if (!nextSession) {
+        router.replace("/login");
+      }
     });
 
     return () => {
       mounted = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!loading && !session) {
@@ -41,9 +46,11 @@ export default function AuthGate({ children }: AuthGateProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[var(--background)]">
-        <div className="h-8 w-8 animate-spin rounded-full border-3 border-[var(--muted)] border-t-[var(--accent)]" />
-        <p className="text-sm text-[var(--muted-foreground)]">Loading dashboard…</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[var(--bg-primary)]">
+        <div className="h-8 w-8 animate-spin rounded-full border-3 border-[var(--border)] border-t-[var(--accent-blue)]" />
+        <p className="text-sm text-[var(--text-secondary)]">
+          Loading dashboard…
+        </p>
       </div>
     );
   }

@@ -215,7 +215,7 @@ export default function StockQuoteCard({
                       borderRadius: "6px",
                       fontSize: "11px",
                     }}
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value) => formatCurrency(Number(value))}
                   />
                 </LineChart>
               </ResponsiveContainer>

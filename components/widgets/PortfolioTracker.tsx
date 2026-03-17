@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { ApiClient } from "@/lib/apiClient";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
-import { readStorage, storageKeys, writeStorage } from "@/lib/storage";
+import { useUserId } from "@/lib/UserContext";
+import { getProfile, updateProfile } from "@/lib/supabaseData";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import ChartDeferredRender from "@/components/ChartDeferredRender";
 import { Plus } from "lucide-react";
@@ -32,58 +33,24 @@ const COLORS = [
   "#f97316",
 ];
 
-// Safely migrate old holdings (which may not have avgCost)
-function migrateHoldings(raw: any[]): Holding[] {
-  return raw.map((h) => ({
-    id: h.id || crypto.randomUUID(),
-    ticker: h.ticker || "",
-    quantity: Number(h.quantity) || 0,
-    avgCost: Number(h.avgCost) || 0, // Default to 0 if missing/NaN
-  }));
-}
-
-const PORTFOLIO_VERSION = 4; // Bump to force fresh portfolio
 const DEFAULT_HOLDINGS: Holding[] = [
   { id: "default-1", ticker: "AAPL", quantity: 10, avgCost: 150 },
   { id: "default-2", ticker: "MSFT", quantity: 6, avgCost: 350 },
   { id: "default-3", ticker: "GOOGL", quantity: 4, avgCost: 140 },
 ];
 
-/** Read holdings from localStorage with version check, or return defaults */
-function loadHoldings(): Holding[] {
-  if (typeof window === "undefined") return DEFAULT_HOLDINGS;
-
-  const savedVersion = readStorage<number>("findash-portfolio-version", 0);
-  if (savedVersion < PORTFOLIO_VERSION) {
-    // Version mismatch — force defaults
-    writeStorage(storageKeys.portfolio, DEFAULT_HOLDINGS);
-    writeStorage("findash-portfolio-version", PORTFOLIO_VERSION);
-    return DEFAULT_HOLDINGS;
-  }
-
-  const saved = readStorage<any[]>(storageKeys.portfolio, []);
-  if (saved.length === 0) {
-    writeStorage(storageKeys.portfolio, DEFAULT_HOLDINGS);
-    writeStorage("findash-portfolio-version", PORTFOLIO_VERSION);
-    return DEFAULT_HOLDINGS;
-  }
-
-  const migrated = migrateHoldings(saved);
-  const hasValidData = migrated.some(
-    (h) => h.ticker && (h.quantity > 0 || h.avgCost > 0)
-  );
-  if (!hasValidData) {
-    writeStorage(storageKeys.portfolio, DEFAULT_HOLDINGS);
-    writeStorage("findash-portfolio-version", PORTFOLIO_VERSION);
-    return DEFAULT_HOLDINGS;
-  }
-
-  return migrated;
+function migrateHoldings(raw: any[]): Holding[] {
+  return raw.map((h) => ({
+    id: h.id || crypto.randomUUID(),
+    ticker: h.ticker || "",
+    quantity: Number(h.quantity) || 0,
+    avgCost: Number(h.avgCost) || 0,
+  }));
 }
 
 export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerProps) {
-  // Start with defaults so the first render is never empty.
-  // The useEffect below will replace these with localStorage data if valid.
+  const userId = useUserId();
+
   const [holdings, setHoldings] = useState<Holding[]>(DEFAULT_HOLDINGS);
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
@@ -92,6 +59,7 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
   const clientRef = useRef<ApiClient | null>(null);
   const hasRefreshed = useRef(false);
   const initialized = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -110,21 +78,37 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
     }
   }, [apiKey]);
 
-  // One-time initialisation on mount (client only)
+  // Load holdings from Supabase on mount
   useEffect(() => {
-    const loaded = loadHoldings();
-    setHoldings(loaded);
-    initialized.current = true;
-  }, []);
+    if (!userId) return;
 
-  // Persist whenever holdings change — but ONLY after initialisation
-  useEffect(() => {
-    if (!initialized.current) return;
-    if (holdings.length > 0) {
-      writeStorage(storageKeys.portfolio, holdings);
-      writeStorage("findash-portfolio-version", PORTFOLIO_VERSION);
+    async function load() {
+      try {
+        const profile = await getProfile(userId);
+        if (profile && Array.isArray(profile.portfolio_holdings) && profile.portfolio_holdings.length > 0) {
+          setHoldings(migrateHoldings(profile.portfolio_holdings));
+        }
+        // else keep DEFAULT_HOLDINGS
+      } catch {
+        // keep defaults on error
+      }
+      initialized.current = true;
     }
-  }, [holdings]);
+
+    load();
+  }, [userId]);
+
+  // Persist holdings to Supabase (debounced)
+  useEffect(() => {
+    if (!initialized.current || !userId) return;
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      updateProfile(userId, { portfolio_holdings: holdings }).catch((err) =>
+        console.error("Failed to save portfolio:", err)
+      );
+    }, 800);
+  }, [holdings, userId]);
 
   const refresh = useCallback(async () => {
     if (!clientRef.current || holdings.length === 0) return;
@@ -132,9 +116,9 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
       .map((h) => h.ticker.trim().toUpperCase())
       .filter(Boolean);
     if (tickers.length === 0) return;
-    
+
     setLoading(true);
-    
+
     try {
       const results = await Promise.all(
         tickers.map(async (t) => {
@@ -146,7 +130,7 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
           }
         })
       );
-      
+
       const next: Record<string, number> = {};
       results.forEach((r) => {
         next[r.ticker] = r.price;
@@ -157,27 +141,23 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
     }
   }, [holdings]);
 
-  // Keep a stable ref to the latest refresh fn so the auto-fire effect
-  // doesn't need it as a dependency (avoids cleanup race-condition).
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
 
-  // Auto-fetch prices once when apiKey becomes available
   useEffect(() => {
     if (!apiKey || hasRefreshed.current) return;
     hasRefreshed.current = true;
 
-    // Short delay so the ApiClient effect has time to assign clientRef
     const timeout = setTimeout(() => {
       refreshRef.current();
     }, 800);
     return () => clearTimeout(timeout);
-  }, [apiKey]); // only fires when apiKey changes
+  }, [apiKey]);
 
   const portfolioData = useMemo(() => {
     let totalValue = 0;
     let totalCost = 0;
-    
+
     const holdingData = holdings.map((h) => {
       const ticker = h.ticker.trim().toUpperCase();
       const price = prices[ticker] ?? 0;
@@ -187,10 +167,10 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
       const cost = avgCost * qty;
       const pnl = cost > 0 ? value - cost : 0;
       const pnlPercent = cost > 0 ? (pnl / cost) * 100 : 0;
-      
+
       totalValue += value;
       totalCost += cost;
-      
+
       return {
         ...h,
         price,
@@ -199,10 +179,10 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
         pnlPercent,
       };
     });
-    
+
     const totalPnL = totalCost > 0 ? totalValue - totalCost : 0;
     const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
-    
+
     return {
       holdings: holdingData,
       totalValue,
@@ -279,35 +259,35 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
           )}
         </div>
 
-        {/* Donut Chart — hidden when widget is very short */}
+        {/* Donut Chart */}
         {donutData.length > 0 && containerHeight >= 300 && (
           <div className="mb-3 h-32 min-h-[128px]">
             <ChartDeferredRender>
-            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
-              <PieChart>
-                <Pie
-                  data={donutData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={30}
-                  outerRadius={50}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {donutData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: "var(--bg-card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "6px",
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+                <PieChart>
+                  <Pie
+                    data={donutData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={30}
+                    outerRadius={50}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {donutData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => formatCurrency(Number(value))}
+                    contentStyle={{
+                      backgroundColor: "var(--bg-card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "6px",
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
             </ChartDeferredRender>
           </div>
         )}

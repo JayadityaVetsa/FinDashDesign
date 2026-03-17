@@ -1,33 +1,26 @@
 import type { WidgetConfig } from "@/lib/widgetConfig";
 
 /* ------------------------------------------------------------------ */
-/*  Dashboard type                                                     */
+/*  Dashboard type (matches Supabase schema)                           */
 /* ------------------------------------------------------------------ */
 
 export type Dashboard = {
   id: string;
   name: string;
   widgets: WidgetConfig[];
-  createdAt: number;
+  position: number;
 };
 
 /* ------------------------------------------------------------------ */
-/*  Storage keys                                                       */
+/*  Storage keys — used only for theme (pre-hydration) now             */
 /* ------------------------------------------------------------------ */
 
 export const storageKeys = {
-  alphaVantageKey: "findash-alpha-key", // Legacy, kept for migration
-  finnhubKey: "findash-finnhub-key",
-  gridLayout: "findash-grid-layout",
-  portfolio: "findash-portfolio",
-  widgetConfig: "findash-widget-config",
-  layoutPreset: "findash-layout-preset",
-  dashboards: "findash-dashboards",
-  activeDashboard: "findash-active-dashboard",
+  theme: "findash-theme",
 };
 
 /* ------------------------------------------------------------------ */
-/*  Generic helpers                                                    */
+/*  Generic localStorage helpers (theme only)                          */
 /* ------------------------------------------------------------------ */
 
 export function readStorage<T>(key: string, fallback: T): T {
@@ -48,24 +41,4 @@ export function writeStorage<T>(key: string, value: T) {
     return;
   }
   window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-/* ------------------------------------------------------------------ */
-/*  Dashboard helpers                                                  */
-/* ------------------------------------------------------------------ */
-
-export function loadDashboards(): Dashboard[] {
-  return readStorage<Dashboard[]>(storageKeys.dashboards, []);
-}
-
-export function saveDashboards(dashboards: Dashboard[]) {
-  writeStorage(storageKeys.dashboards, dashboards);
-}
-
-export function getActiveDashboardId(): string {
-  return readStorage<string>(storageKeys.activeDashboard, "");
-}
-
-export function setActiveDashboardId(id: string) {
-  writeStorage(storageKeys.activeDashboard, id);
 }

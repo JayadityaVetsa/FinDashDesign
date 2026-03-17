@@ -11,30 +11,30 @@ import ToastContainer, { showRateLimitToast } from "@/components/Toast";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { setGlobalRateLimitHandler } from "@/lib/apiClient";
 import { supabase } from "@/lib/supabaseClient";
+import { UserProvider } from "@/lib/UserContext";
 import {
-  readStorage,
-  storageKeys,
-  writeStorage,
-  loadDashboards,
-  saveDashboards,
-  getActiveDashboardId,
-  setActiveDashboardId,
-  type Dashboard,
-} from "@/lib/storage";
+  getProfile,
+  getUserDashboards,
+  updateProfile,
+  updateDashboard,
+  createDashboard as createSupaDashboard,
+  deleteDashboard as deleteSupaDashboard,
+  seedDashboards,
+  type UserProfile,
+  type SupaDashboard,
+} from "@/lib/supabaseData";
 import { createSeedDashboards } from "@/lib/widgetConfig";
 import type { WidgetConfig } from "@/lib/widgetConfig";
 
 /* ------------------------------------------------------------------ */
-/*  Helper: build a Dashboard object from seed data                    */
+/*  Dashboard type used in local state                                 */
 /* ------------------------------------------------------------------ */
-function makeDashboard(name: string, widgets: WidgetConfig[]): Dashboard {
-  return {
-    id: crypto.randomUUID(),
-    name,
-    widgets,
-    createdAt: Date.now(),
-  };
-}
+type Dashboard = {
+  id: string;
+  name: string;
+  widgets: WidgetConfig[];
+  position: number;
+};
 
 /* ------------------------------------------------------------------ */
 /*  Page component                                                     */
@@ -42,10 +42,13 @@ function makeDashboard(name: string, widgets: WidgetConfig[]): Dashboard {
 export default function DashboardPage() {
   const router = useRouter();
 
-  // API key state
+  // Auth
+  const [userId, setUserId] = useState("");
+  const [checking, setChecking] = useState(true);
+
+  // Profile / API key
   const [apiKey, setApiKey] = useState("");
   const [draftKey, setDraftKey] = useState("");
-  const [checking, setChecking] = useState(true);
 
   // Multi-dashboard state
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
@@ -56,48 +59,92 @@ export default function DashboardPage() {
   const [selectedStock, setSelectedStock] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Debounce ref for widget saves
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   /* ---------------------------------------------------------------- */
-  /*  Initialisation                                                   */
+  /*  Initialisation — load profile + dashboards from Supabase         */
   /* ---------------------------------------------------------------- */
   useEffect(() => {
-    // 1. Check API key
-    const finnhubKey = readStorage<string>(storageKeys.finnhubKey, "");
-    const alphaKey = readStorage<string>(storageKeys.alphaVantageKey, "");
-    const key = finnhubKey || alphaKey;
+    let cancelled = false;
 
-    if (!key) {
-      router.push("/onboarding");
-      return;
+    async function init() {
+      // 1. Get session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return; // AuthGate will redirect
+
+      const uid = session.user.id;
+      if (cancelled) return;
+      setUserId(uid);
+
+      // 2. Fetch profile
+      let profile: UserProfile | null = null;
+      try {
+        profile = await getProfile(uid);
+      } catch {
+        /* table may not exist yet — will be caught below */
+      }
+
+      if (cancelled) return;
+
+      // 3. If no profile or onboarding not completed → send to onboarding
+      if (!profile || !profile.onboarding_completed || !profile.finnhub_key) {
+        router.push("/onboarding");
+        return;
+      }
+
+      setApiKey(profile.finnhub_key);
+      setDraftKey(profile.finnhub_key);
+      setSidebarCollapsed(profile.sidebar_collapsed);
+
+      // 4. Fetch dashboards
+      let boards: SupaDashboard[] = [];
+      try {
+        boards = await getUserDashboards(uid);
+      } catch {
+        /* will seed below */
+      }
+
+      if (cancelled) return;
+
+      // 5. If user has no dashboards (edge case), seed them
+      if (boards.length === 0) {
+        try {
+          const seeds = createSeedDashboards();
+          boards = await seedDashboards(uid, seeds);
+        } catch (err) {
+          console.error("Failed to seed dashboards:", err);
+        }
+      }
+
+      const localBoards: Dashboard[] = boards.map((b) => ({
+        id: b.id,
+        name: b.name,
+        widgets: (b.widgets as WidgetConfig[]) || [],
+        position: b.position,
+      }));
+
+      setDashboards(localBoards);
+
+      // 6. Determine active dashboard
+      let active = profile.active_dashboard_id || "";
+      if (!active || !localBoards.find((b) => b.id === active)) {
+        active = localBoards[0]?.id || "";
+        if (active) {
+          updateProfile(uid, { active_dashboard_id: active }).catch(() => {});
+        }
+      }
+      setActiveId(active);
+
+      setChecking(false);
     }
 
-    setApiKey(key);
-    setDraftKey(key);
-
-    // 2. Load (or seed) dashboards
-    let boards = loadDashboards();
-
-    if (boards.length === 0) {
-      // First visit — create seed dashboards
-      const seeds = createSeedDashboards();
-      boards = seeds.map((s) => makeDashboard(s.name, s.widgets));
-      saveDashboards(boards);
-    }
-
-    setDashboards(boards);
-
-    // 3. Determine active dashboard
-    let savedActive = getActiveDashboardId();
-    if (!savedActive || !boards.find((b) => b.id === savedActive)) {
-      savedActive = boards[0].id;
-      setActiveDashboardId(savedActive);
-    }
-    setActiveId(savedActive);
-
-    // 4. Load sidebar collapsed state
-    const collapsed = readStorage<boolean>("findash-sidebar-collapsed", false);
-    setSidebarCollapsed(collapsed);
-
-    setChecking(false);
+    init();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   /* ---------------------------------------------------------------- */
@@ -121,63 +168,89 @@ export default function DashboardPage() {
   ]);
 
   /* ---------------------------------------------------------------- */
-  /*  Dashboard CRUD                                                   */
+  /*  Dashboard CRUD (Supabase-backed)                                 */
   /* ---------------------------------------------------------------- */
-  const persist = useCallback((boards: Dashboard[]) => {
-    setDashboards(boards);
-    saveDashboards(boards);
-  }, []);
-
   const handleSelectDashboard = useCallback(
     (id: string) => {
       setActiveId(id);
-      setActiveDashboardId(id);
-      setRefreshKey((p) => p + 1); // remount grid
+      if (userId) {
+        updateProfile(userId, { active_dashboard_id: id }).catch(() => {});
+      }
+      setRefreshKey((p) => p + 1);
+    },
+    [userId]
+  );
+
+  const handleCreateDashboard = useCallback(
+    async (name: string) => {
+      if (!userId) return;
+      try {
+        const created = await createSupaDashboard(
+          userId,
+          name || "Untitled Dashboard",
+          [],
+          dashboards.length
+        );
+        const newBoard: Dashboard = {
+          id: created.id,
+          name: created.name,
+          widgets: [],
+          position: created.position,
+        };
+        setDashboards((prev) => [...prev, newBoard]);
+        handleSelectDashboard(created.id);
+      } catch (err) {
+        console.error("Failed to create dashboard:", err);
+      }
+    },
+    [userId, dashboards.length, handleSelectDashboard]
+  );
+
+  const handleRenameDashboard = useCallback(
+    async (id: string, name: string) => {
+      setDashboards((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, name } : d))
+      );
+      try {
+        await updateDashboard(id, { name });
+      } catch (err) {
+        console.error("Failed to rename dashboard:", err);
+      }
     },
     []
   );
 
-  const handleCreateDashboard = useCallback((name: string) => {
-    const newBoard = makeDashboard(name || "Untitled Dashboard", []);
-    const updated = [...dashboards, newBoard];
-    persist(updated);
-    handleSelectDashboard(newBoard.id);
-  }, [dashboards, persist, handleSelectDashboard]);
-
-  const handleRenameDashboard = useCallback(
-    (id: string, name: string) => {
-      const updated = dashboards.map((d) =>
-        d.id === id ? { ...d, name } : d
-      );
-      persist(updated);
-    },
-    [dashboards, persist]
-  );
-
   const handleDeleteDashboard = useCallback(
-    (id: string) => {
+    async (id: string) => {
       if (dashboards.length <= 1) return;
       const updated = dashboards.filter((d) => d.id !== id);
-      persist(updated);
+      setDashboards(updated);
 
-      // If we deleted the active one, switch to the first remaining
       if (activeId === id) {
         handleSelectDashboard(updated[0].id);
       }
+
+      try {
+        await deleteSupaDashboard(id);
+      } catch (err) {
+        console.error("Failed to delete dashboard:", err);
+      }
     },
-    [dashboards, activeId, persist, handleSelectDashboard]
+    [dashboards, activeId, handleSelectDashboard]
   );
 
   const handleToggleSidebar = useCallback(() => {
     setSidebarCollapsed((prev) => {
       const next = !prev;
-      writeStorage("findash-sidebar-collapsed", next);
+      if (userId) {
+        updateProfile(userId, { sidebar_collapsed: next }).catch(() => {});
+      }
       return next;
     });
-  }, []);
+  }, [userId]);
 
   /* ---------------------------------------------------------------- */
-  /*  Widget changes (from DashboardGrid)                              */
+  /*  Widget changes — debounced save to Supabase                      */
   /* ---------------------------------------------------------------- */
   const handleWidgetsChange = useCallback(
     (widgets: WidgetConfig[]) => {
@@ -185,32 +258,56 @@ export default function DashboardPage() {
         const updated = prev.map((d) =>
           d.id === activeId ? { ...d, widgets } : d
         );
-        saveDashboards(updated);
         return updated;
       });
+
+      // Debounce the Supabase write (widgets change frequently during drag)
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        updateDashboard(activeId, { widgets }).catch((err) =>
+          console.error("Failed to save widgets:", err)
+        );
+      }, 600);
     },
     [activeId]
   );
 
   /* ---------------------------------------------------------------- */
-  /*  API key handlers                                                 */
+  /*  API key handlers — save to Supabase profile                      */
   /* ---------------------------------------------------------------- */
   const handleApiKeyDraftChange = useCallback((value: string) => {
     setDraftKey(value);
   }, []);
 
-  const handleApiKeyCommit = useCallback((value: string) => {
-    const trimmed = value.trim();
-    if (trimmed) {
-      setApiKey(trimmed);
-      setDraftKey(trimmed);
-      writeStorage(storageKeys.finnhubKey, trimmed);
-      setRefreshKey((p) => p + 1);
-    }
-  }, []);
+  const handleApiKeyCommit = useCallback(
+    async (value: string) => {
+      const trimmed = value.trim();
+      if (trimmed && userId) {
+        setApiKey(trimmed);
+        setDraftKey(trimmed);
+        try {
+          await updateProfile(userId, { finnhub_key: trimmed });
+        } catch (err) {
+          console.error("Failed to save API key:", err);
+        }
+        setRefreshKey((p) => p + 1);
+      }
+    },
+    [userId]
+  );
+
+  const handleThemeChange = useCallback(
+    (theme: string) => {
+      if (userId) {
+        updateProfile(userId, { theme }).catch(() => {});
+      }
+    },
+    [userId]
+  );
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    // AuthGate will redirect to /login
   };
 
   const handleStockSelect = (symbol: string) => {
@@ -229,8 +326,11 @@ export default function DashboardPage() {
   if (checking) {
     return (
       <AuthGate>
-        <div className="flex min-h-screen items-center justify-center bg-[var(--bg-primary)]">
-          <div className="text-sm text-[var(--text-secondary)]">Loading...</div>
+        <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[var(--bg-primary)]">
+          <div className="h-8 w-8 animate-spin rounded-full border-3 border-[var(--border)] border-t-[var(--accent-blue)]" />
+          <p className="text-sm text-[var(--text-secondary)]">
+            Loading your workspace…
+          </p>
         </div>
       </AuthGate>
     );
@@ -238,38 +338,41 @@ export default function DashboardPage() {
 
   return (
     <AuthGate>
-      <div className="flex min-h-screen flex-col bg-[var(--bg-primary)]">
-        <Header
-          apiKey={draftKey}
-          onApiKeyChange={handleApiKeyDraftChange}
-          onApiKeyCommit={handleApiKeyCommit}
-          onSignOut={handleSignOut}
-          onToggleSidebar={handleToggleSidebar}
-          sidebarCollapsed={sidebarCollapsed}
-        />
-        <div className="flex flex-1">
-          <Sidebar
-            dashboards={dashboards}
-            activeDashboardId={activeId}
-            collapsed={sidebarCollapsed}
-            onToggle={handleToggleSidebar}
-            onSelect={handleSelectDashboard}
-            onCreate={handleCreateDashboard}
-            onRename={handleRenameDashboard}
-            onDelete={handleDeleteDashboard}
+      <UserProvider userId={userId}>
+        <div className="flex min-h-screen flex-col bg-[var(--bg-primary)]">
+          <Header
+            apiKey={draftKey}
+            onApiKeyChange={handleApiKeyDraftChange}
+            onApiKeyCommit={handleApiKeyCommit}
+            onSignOut={handleSignOut}
+            onToggleSidebar={handleToggleSidebar}
+            sidebarCollapsed={sidebarCollapsed}
+            onThemeChange={handleThemeChange}
           />
-          <main className="mx-auto w-full max-w-[1920px] flex-1 px-4 py-4 overflow-x-hidden overflow-y-auto">
-            <DashboardGrid
-              key={`${activeId}-${refreshKey}`}
-              apiKey={apiKey}
-              widgets={activeWidgets}
-              onWidgetsChange={handleWidgetsChange}
-              onStockSelect={handleStockSelect}
+          <div className="flex flex-1">
+            <Sidebar
+              dashboards={dashboards}
+              activeDashboardId={activeId}
+              collapsed={sidebarCollapsed}
+              onToggle={handleToggleSidebar}
+              onSelect={handleSelectDashboard}
+              onCreate={handleCreateDashboard}
+              onRename={handleRenameDashboard}
+              onDelete={handleDeleteDashboard}
             />
-          </main>
+            <main className="mx-auto w-full max-w-[1920px] flex-1 px-4 py-4 overflow-x-hidden overflow-y-auto">
+              <DashboardGrid
+                key={`${activeId}-${refreshKey}`}
+                apiKey={apiKey}
+                widgets={activeWidgets}
+                onWidgetsChange={handleWidgetsChange}
+                onStockSelect={handleStockSelect}
+              />
+            </main>
+          </div>
+          <ToastContainer />
         </div>
-        <ToastContainer />
-      </div>
+      </UserProvider>
     </AuthGate>
   );
 }
