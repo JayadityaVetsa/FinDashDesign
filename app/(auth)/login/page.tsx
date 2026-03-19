@@ -23,11 +23,9 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // Prefer NEXT_PUBLIC_SITE_URL on Vercel/production so OAuth never falls back to
-      // localhost if the client origin is wrong; local dev can omit it and use window.
-      const appBase =
-        (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "").trim() ||
-        window.location.origin;
+      // PKCE requires the callback to return to the same browser origin that initiated login.
+      // Using runtime origin avoids preview-vs-production domain mismatch issues on Vercel.
+      const appBase = window.location.origin.replace(/\/$/, "");
       const redirectTo = `${appBase}/auth/callback`;
       const { error: oauthError, data } = await supabase.auth.signInWithOAuth({
         provider: "google",
