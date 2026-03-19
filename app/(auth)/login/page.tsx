@@ -23,7 +23,12 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const redirectTo = `${window.location.origin}/auth/callback`;
+      // Prefer NEXT_PUBLIC_SITE_URL on Vercel/production so OAuth never falls back to
+      // localhost if the client origin is wrong; local dev can omit it and use window.
+      const appBase =
+        (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "").trim() ||
+        window.location.origin;
+      const redirectTo = `${appBase}/auth/callback`;
       const { error: oauthError, data } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo },

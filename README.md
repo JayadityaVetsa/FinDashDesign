@@ -101,9 +101,15 @@ Create a `.env.local` (or `.env`) file in the project root:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+
+# Public site URL (no trailing slash). Required on Vercel so Google OAuth
+# redirectTo matches production; locally you can omit it and it uses the browser origin.
+NEXT_PUBLIC_SITE_URL=https://your-app.vercel.app
 ```
 
 > **Note:** The Finnhub API key is entered through the app UI (onboarding flow) and stored in the browser's `localStorage`. It never touches the server.
+
+**Vercel / production:** In the Vercel dashboard, set `NEXT_PUBLIC_SITE_URL` to your live URL (e.g. `https://fin-dash-design-ad43.vercel.app`). In Supabase → Authentication → URL Configuration, set **Site URL** to the same domain and add `https://<your-domain>/auth/callback` under **Redirect URLs**.
 
 ### 3. Run the dev server
 
