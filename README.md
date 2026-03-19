@@ -70,7 +70,7 @@ A sleek, customisable financial dashboard built with **Next.js 16**, **Tailwind 
 |---|---|
 | Framework | Next.js 16 (App Router) |
 | Styling | Tailwind CSS 4 + CSS custom properties |
-| Auth | Supabase (email / password) |
+| Auth | Supabase (Google OAuth) |
 | Data | Finnhub REST API |
 | Charts | Recharts 3 |
 | Grid | react-grid-layout 2 |
@@ -112,7 +112,7 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). You'll be guided through:
-1. **Login / Sign up** (Supabase auth)
+1. **Login (Google OAuth)** (Supabase auth)
 2. **Onboarding** — paste your Finnhub API key (verified live)
 3. **Dashboard** — start dragging widgets!
 
@@ -123,7 +123,8 @@ Open [http://localhost:3000](http://localhost:3000). You'll be guided through:
 ```
 FinDashDesign/
 ├── app/
-│   ├── (auth)/login/       # Login / sign-up page
+│   ├── (auth)/login/       # Google OAuth sign-in page
+│   ├── auth/callback/       # OAuth callback handler
 │   ├── dashboard/          # Main dashboard page
 │   ├── onboarding/         # First-time setup flow
 │   ├── clear-storage/      # Dev utility to reset localStorage

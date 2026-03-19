@@ -7,8 +7,6 @@ import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,42 +18,35 @@ export default function LoginPage() {
     });
   }, [router]);
 
-  const handleSignIn = async () => {
+  const handleGoogleSignIn = async () => {
     setLoading(true);
     setError(null);
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (signInError) {
-      setError(signInError.message);
-    } else {
-      // Dashboard page will load this user's profile from Supabase
-      router.replace("/dashboard");
-    }
-    setLoading(false);
-  };
 
-  const handleSignUp = async () => {
-    setLoading(true);
-    setError(null);
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    if (signUpError) {
-      setError(signUpError.message);
-    } else {
-      // The Supabase trigger auto-creates a profile row.
-      // Dashboard page will detect onboarding_completed = false → redirect to /onboarding
-      router.replace("/dashboard");
-    }
-    setLoading(false);
-  };
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { error: oauthError, data } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo },
+      });
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !loading) {
-      handleSignIn();
+      if (oauthError) {
+        setError(oauthError.message);
+        return;
+      }
+
+      // Supabase should return a URL to complete redirect (especially in OAuth redirect flows).
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+
+      // Fallback: if no URL returned, the client should still handle the redirect via session-in-URL detection.
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session) router.replace("/dashboard");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to start Google sign-in.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,67 +77,27 @@ export default function LoginPage() {
         {/* Card */}
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-8 shadow-xl backdrop-blur-xl">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-            Welcome back
+            Sign in with Google
           </h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Sign in or create an account to access your personal financial
-            dashboard.
+            Continue with Google to access your personal financial dashboard.
           </p>
 
           <div className="mt-6 space-y-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent-blue)] focus:ring-2 focus:ring-[var(--accent-blue)]/20"
-                placeholder="you@example.com"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent-blue)] focus:ring-2 focus:ring-[var(--accent-blue)]/25"
-                placeholder="••••••••"
-              />
-              <p className="mt-1 text-[11px] text-[var(--text-muted)]">
-                At least 6 characters. Passwords are stored securely by
-                Supabase.
-              </p>
-            </div>
-
             {error && (
               <div className="rounded-xl bg-[var(--accent-red)]/10 px-4 py-2.5 text-sm text-[var(--accent-red)]">
                 {error}
               </div>
             )}
 
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+            <div className="flex flex-col gap-3 pt-2">
               <button
                 type="button"
-                onClick={handleSignIn}
+                onClick={handleGoogleSignIn}
                 disabled={loading}
                 className="flex-1 rounded-xl bg-[var(--accent-blue)] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:opacity-90 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? "Signing in…" : "Sign in"}
-              </button>
-              <button
-                type="button"
-                onClick={handleSignUp}
-                disabled={loading}
-                className="flex-1 rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] transition-all hover:border-[var(--accent-blue)] hover:bg-[var(--bg-card-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Create account
+                {loading ? "Redirecting…" : "Continue with Google"}
               </button>
             </div>
 
