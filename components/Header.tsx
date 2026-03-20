@@ -48,7 +48,7 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-40 h-[52px] border-b border-[var(--border)] bg-[var(--bg-secondary)]">
-      <div className="mx-auto flex h-full max-w-[1920px] items-center justify-between gap-4 px-4">
+      <div className="flex h-full w-full items-center justify-between gap-4 px-4">
         {/* Left: Sidebar toggle + Logo */}
         <div className="flex items-center gap-2">
           {onToggleSidebar && (

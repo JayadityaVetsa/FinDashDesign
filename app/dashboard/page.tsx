@@ -349,7 +349,7 @@ export default function DashboardPage() {
             sidebarCollapsed={sidebarCollapsed}
             onThemeChange={handleThemeChange}
           />
-          <div className="flex flex-1">
+          <div className="hidden flex-1 md:flex">
             <Sidebar
               dashboards={dashboards}
               activeDashboardId={activeId}
@@ -360,7 +360,7 @@ export default function DashboardPage() {
               onRename={handleRenameDashboard}
               onDelete={handleDeleteDashboard}
             />
-            <main className="mx-auto w-full max-w-[1920px] flex-1 px-4 py-4 overflow-x-hidden overflow-y-auto">
+            <main className="w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4">
               <DashboardGrid
                 key={`${activeId}-${refreshKey}`}
                 apiKey={apiKey}
@@ -370,6 +370,17 @@ export default function DashboardPage() {
               />
             </main>
           </div>
+          <main className="flex flex-1 items-center justify-center px-4 py-8 md:hidden">
+            <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-6 text-center shadow-lg">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+                Bigger screen recommended
+              </h2>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                FinDash dashboard editing works best on tablets and desktops.
+                Please switch to a larger screen for the full experience.
+              </p>
+            </div>
+          </main>
           <ToastContainer />
         </div>
       </UserProvider>
