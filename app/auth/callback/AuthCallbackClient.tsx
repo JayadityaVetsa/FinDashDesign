@@ -18,18 +18,20 @@ export default function AuthCallbackClient() {
       try {
         const code = searchParams.get("code");
 
-        // Some Supabase OAuth flows provide an auth code in the query string.
-        if (code) {
+        // With `detectSessionInUrl: true`, the Supabase client may already
+        // have exchanged the PKCE code on initialization (to avoid doing
+        // it twice, we check for an existing session first).
+        const { data: sessionData1 } = await supabase.auth.getSession();
+
+        if (!sessionData1.session && code) {
           await supabase.auth.exchangeCodeForSession(code);
         }
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const { data: sessionData2 } = await supabase.auth.getSession();
 
         if (cancelled) return;
 
-        if (session) {
+        if (sessionData2.session) {
           router.replace("/dashboard");
         } else {
           router.replace("/login");
