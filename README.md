@@ -2,6 +2,10 @@
 
 A financial workspace for the web: draggable market widgets, multiple dashboards, watchlists, company news and a portfolio tracker. Built with Next.js, React, TypeScript and **Neon PostgreSQL**, compatible with **Vercel**.
 
+**[Open FinDash](https://fin-dash-design-ad43.vercel.app/)** · [Source code](https://github.com/JayadityaVetsa/FinDashDesign)
+
+Create an account to start your own workspace, then connect your Finnhub key for live market data. The public deployment uses Neon Postgres for persistent, account-scoped storage.
+
 ## Deploy to Vercel
 
 1. Import [this repository](https://github.com/JayadityaVetsa/FinDashDesign) into Vercel, or use the existing project.
