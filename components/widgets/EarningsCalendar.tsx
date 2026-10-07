@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import type { FinnhubEarningsItem } from "@/lib/finnhub";
+import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
 import WidgetBase from "@/components/widgets/WidgetBase";
 
@@ -10,7 +12,7 @@ type EarningsCalendarProps = {
 };
 
 export default function EarningsCalendar({ apiKey, onClose }: EarningsCalendarProps) {
-  const [earnings, setEarnings] = useState<any[]>([]);
+  const [earnings, setEarnings] = useState<FinnhubEarningsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<ApiClient | null>(null);
@@ -47,8 +49,8 @@ export default function EarningsCalendar({ apiKey, onClose }: EarningsCalendarPr
         .slice(0, 10);
       
       setEarnings(sorted);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }

@@ -79,8 +79,13 @@ export type SeedDashboard = {
 };
 
 function stamp(widgets: Omit<WidgetConfig, "id">[]): WidgetConfig[] {
-  const ts = Date.now();
-  return widgets.map((w, i) => ({ ...w, id: `${w.type}-${ts}-${i}` }));
+  return widgets.map((w) => ({ ...w, id: crypto.randomUUID() }));
+}
+
+export function createPresetDashboard(preset: string): SeedDashboard {
+  const selected = WIDGET_PRESETS[preset];
+  if (!selected) throw new Error("Choose a valid dashboard preset.");
+  return { name: selected.name, widgets: stamp(selected.widgets) };
 }
 
 export function createSeedDashboards(): SeedDashboard[] {

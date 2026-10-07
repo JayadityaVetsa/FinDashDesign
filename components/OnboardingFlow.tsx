@@ -4,11 +4,11 @@ import { useState } from "react";
 import { Check, ExternalLink, ArrowRight } from "lucide-react";
 import { ApiClient } from "@/lib/apiClient";
 import { WIDGET_PRESETS } from "@/lib/widgetConfig";
-import { createSeedDashboards } from "@/lib/widgetConfig";
+import { createPresetDashboard } from "@/lib/widgetConfig";
+import { errorMessage } from "@/lib/errors";
 import {
-  upsertProfile,
   seedDashboards,
-} from "@/lib/supabaseData";
+} from "@/lib/data";
 
 type OnboardingFlowProps = {
   userId: string;
@@ -42,43 +42,29 @@ export default function OnboardingFlow({
       const client = new ApiClient({ apiKey: apiKey.trim() });
       await client.getQuote("AAPL"); // quick validation call
       setStep(3);
-    } catch (error: any) {
-      setVerifyError(error.message || "Invalid API key");
+    } catch (error: unknown) {
+      setVerifyError(errorMessage(error));
     } finally {
       setVerifying(false);
     }
   };
 
   /* ---------------------------------------------------------------- */
-  /*  Step 3 — save everything to Supabase and finish                  */
+  /*  Step 3 — save the workspace atomically and finish                  */
   /* ---------------------------------------------------------------- */
   const handleComplete = async () => {
-    if (!selectedPreset) return;
+    if (!selectedPreset || saving) return;
 
     setSaving(true);
     try {
-      // 1. Save profile (API key + mark onboarding complete)
-      await upsertProfile(userId, {
-        finnhub_key: apiKey.trim(),
-        onboarding_completed: true,
-      });
-
-      // 2. Seed dashboards for this user
-      const seeds = createSeedDashboards();
-      const created = await seedDashboards(userId, seeds);
-
-      // 3. Set the first dashboard as active
-      if (created.length > 0) {
-        await upsertProfile(userId, {
-          active_dashboard_id: created[0].id,
-        });
-      }
+      setVerifyError(null);
+      await seedDashboards(userId, [createPresetDashboard(selectedPreset)], apiKey.trim());
 
       onComplete();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Onboarding save failed:", err);
       setVerifyError(
-        "Failed to save your settings. Please try again."
+        errorMessage(err)
       );
       setSaving(false);
     }
@@ -186,8 +172,8 @@ export default function OnboardingFlow({
                 )}
                 {!verifyError && (
                   <p className="mt-2 text-xs text-[var(--text-muted)]">
-                    Your API key is stored securely in your Supabase profile and
-                    is never shared with third parties.
+                    Your API key is saved to your private FinDash profile and
+                    sent to Finnhub to request market data.
                   </p>
                 )}
               </div>
@@ -245,6 +231,7 @@ export default function OnboardingFlow({
                 </button>
               ))}
             </div>
+            {verifyError && <p role="alert" className="mt-4 text-sm text-[var(--accent-red)]">{verifyError}</p>}
             <div className="mt-6 flex items-center justify-between">
               <button
                 onClick={() => setStep(2)}

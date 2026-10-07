@@ -39,7 +39,7 @@ export type ApiClientOptions = {
 // Global rate limit handler
 let globalRateLimitHandler: ((retryAfter: number) => void) | undefined;
 
-export function setGlobalRateLimitHandler(handler: (retryAfter: number) => void) {
+export function setGlobalRateLimitHandler(handler?: (retryAfter: number) => void) {
   globalRateLimitHandler = handler;
 }
 
@@ -63,7 +63,11 @@ export class ApiClient {
     requestFn: () => Promise<T>,
     ttl: number
   ): Promise<T> {
-    const cacheKey = getCacheKey(endpoint, params);
+    // Scope cache and in-flight deduplication to this credential. Never persist
+    // the raw key, and never let a cached quote validate a different API key.
+    const credential = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(this.apiKey));
+    const scope = Array.from(new Uint8Array(credential), byte => byte.toString(16).padStart(2, "0")).join("");
+    const cacheKey = getCacheKey(endpoint, { ...params, scope });
     
     // Check cache first
     const cached = getCached<T>(cacheKey);

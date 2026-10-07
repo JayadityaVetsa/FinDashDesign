@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import type { FinnhubNewsItem } from "@/lib/finnhub";
+import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
 import WidgetBase from "@/components/widgets/WidgetBase";
 
@@ -39,7 +41,7 @@ function timeAgo(timestamp: number): string {
 export default function NewsFeed({ apiKey, ticker: initialTicker = "AAPL", onClose, onTickerChange }: NewsFeedProps) {
   const [ticker, setTicker] = useState(initialTicker);
   const [isEditing, setIsEditing] = useState(false);
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<FinnhubNewsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<ApiClient | null>(null);
@@ -77,8 +79,8 @@ export default function NewsFeed({ apiKey, ticker: initialTicker = "AAPL", onClo
       );
       
       setItems(news.slice(0, 20)); // Limit to 20 items
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }

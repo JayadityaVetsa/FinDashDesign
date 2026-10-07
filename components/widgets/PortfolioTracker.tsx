@@ -1,21 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { ApiClient } from "@/lib/apiClient";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
-import { useUserId } from "@/lib/UserContext";
-import { getProfile, updateProfile } from "@/lib/supabaseData";
+import { usePortfolio } from "@/lib/UserContext";
+import type { Holding } from "@/lib/models";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import ChartDeferredRender from "@/components/ChartDeferredRender";
 import { Plus } from "lucide-react";
-
-type Holding = {
-  id: string;
-  ticker: string;
-  quantity: number;
-  avgCost: number;
-};
 
 type PortfolioTrackerProps = {
   apiKey: string;
@@ -33,130 +26,42 @@ const COLORS = [
   "#f97316",
 ];
 
-const DEFAULT_HOLDINGS: Holding[] = [
-  { id: "default-1", ticker: "AAPL", quantity: 10, avgCost: 150 },
-  { id: "default-2", ticker: "MSFT", quantity: 6, avgCost: 350 },
-  { id: "default-3", ticker: "GOOGL", quantity: 4, avgCost: 140 },
-];
-
-function migrateHoldings(raw: any[]): Holding[] {
-  return raw.map((h) => ({
-    id: h.id || crypto.randomUUID(),
-    ticker: h.ticker || "",
-    quantity: Number(h.quantity) || 0,
-    avgCost: Number(h.avgCost) || 0,
-  }));
-}
-
 export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerProps) {
-  const userId = useUserId();
-
-  const [holdings, setHoldings] = useState<Holding[]>(DEFAULT_HOLDINGS);
+  const { holdings, setHoldings, portfolioError, retryPortfolio } = usePortfolio();
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [containerHeight, setContainerHeight] = useState(400);
   const containerRef = useRef<HTMLDivElement>(null);
-  const clientRef = useRef<ApiClient | null>(null);
-  const hasRefreshed = useRef(false);
-  const initialized = useRef(false);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  const tickerKey = [...new Set(holdings.map(h => h.ticker.trim().toUpperCase()).filter(Boolean))].sort().join(',');
   useEffect(() => {
     if (!containerRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setContainerHeight(entry.contentRect.height);
-      }
-    });
+    const observer = new ResizeObserver(entries => setContainerHeight(entries[0].contentRect.height));
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
-
   useEffect(() => {
-    if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
-    }
-  }, [apiKey]);
-
-  // Load holdings from Supabase on mount
-  useEffect(() => {
-    if (!userId) return;
-
-    async function load() {
-      try {
-        const profile = await getProfile(userId);
-        if (profile && Array.isArray(profile.portfolio_holdings) && profile.portfolio_holdings.length > 0) {
-          setHoldings(migrateHoldings(profile.portfolio_holdings));
-        }
-        // else keep DEFAULT_HOLDINGS
-      } catch {
-        // keep defaults on error
-      }
-      initialized.current = true;
-    }
-
-    load();
-  }, [userId]);
-
-  // Persist holdings to Supabase (debounced)
-  useEffect(() => {
-    if (!initialized.current || !userId) return;
-
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      updateProfile(userId, { portfolio_holdings: holdings }).catch((err) =>
-        console.error("Failed to save portfolio:", err)
-      );
-    }, 800);
-  }, [holdings, userId]);
-
-  const refresh = useCallback(async () => {
-    if (!clientRef.current || holdings.length === 0) return;
-    const tickers = holdings
-      .map((h) => h.ticker.trim().toUpperCase())
-      .filter(Boolean);
-    if (tickers.length === 0) return;
-
-    setLoading(true);
-
-    try {
-      const results = await Promise.all(
-        tickers.map(async (t) => {
-          try {
-            const quote = await clientRef.current!.getQuote(t);
-            return { ticker: t, price: quote.c || 0 };
-          } catch {
-            return { ticker: t, price: 0 };
-          }
-        })
-      );
-
+    let cancelled = false;
+    const client = new ApiClient({ apiKey });
+    async function refresh() {
+      if (!apiKey || !tickerKey) return;
+      setLoading(true);
+      const symbols = tickerKey.split(',');
+      const results = await Promise.allSettled(symbols.map(symbol => client.getQuote(symbol)));
+      if (cancelled) return;
       const next: Record<string, number> = {};
-      results.forEach((r) => {
-        next[r.ticker] = r.price;
-      });
+      results.forEach((result, index) => { if (result.status === 'fulfilled') next[symbols[index]] = result.value.c; });
       setPrices(next);
-    } finally {
+      setQuoteError(results.some(r => r.status === 'rejected') ? 'Some quotes are unavailable. Refresh to retry.' : null);
       setLoading(false);
     }
-  }, [holdings]);
-
-  const refreshRef = useRef(refresh);
-  refreshRef.current = refresh;
-
-  useEffect(() => {
-    if (!apiKey || hasRefreshed.current) return;
-    hasRefreshed.current = true;
-
-    const timeout = setTimeout(() => {
-      refreshRef.current();
-    }, 800);
-    return () => clearTimeout(timeout);
-  }, [apiKey]);
-
+    const timer = setTimeout(refresh, 500);
+    const interval = setInterval(refresh, 60000);
+    return () => { cancelled = true; clearTimeout(timer); clearInterval(interval); };
+  }, [apiKey, tickerKey, refreshKey]);
+  const hasAllPrices = holdings.filter(h => h.quantity > 0).every(h => prices[h.ticker.trim().toUpperCase()] > 0);
   const portfolioData = useMemo(() => {
-    let totalValue = 0;
-    let totalCost = 0;
 
     const holdingData = holdings.map((h) => {
       const ticker = h.ticker.trim().toUpperCase();
@@ -168,8 +73,6 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
       const pnl = cost > 0 ? value - cost : 0;
       const pnlPercent = cost > 0 ? (pnl / cost) * 100 : 0;
 
-      totalValue += value;
-      totalCost += cost;
 
       return {
         ...h,
@@ -180,6 +83,8 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
       };
     });
 
+    const totalValue = holdingData.reduce((sum, h) => sum + h.value, 0);
+    const totalCost = holdingData.reduce((sum, h) => sum + h.quantity * h.avgCost, 0);
     const totalPnL = totalCost > 0 ? totalValue - totalCost : 0;
     const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
 
@@ -202,32 +107,29 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
   }, [portfolioData]);
 
   const updateHolding = (id: string, update: Partial<Holding>) => {
-    setHoldings((prev) =>
-      prev.map((h) => (h.id === id ? { ...h, ...update } : h))
-    );
+    setHoldings(holdings.map(h => h.id === id ? { ...h, ...update } : h));
   };
 
   const addHolding = () => {
-    setHoldings((prev) => [
-      ...prev,
+    setHoldings([
+      ...holdings,
       { id: crypto.randomUUID(), ticker: "", quantity: 0, avgCost: 0 },
     ]);
   };
 
   const removeHolding = (id: string) => {
-    setHoldings((prev) => prev.filter((h) => h.id !== id));
+    setHoldings(holdings.filter(h => h.id !== id));
   };
 
   return (
     <WidgetBase
       title="Portfolio"
       onClose={onClose}
-      onSettings={() => {
-        hasRefreshed.current = false;
-        refresh();
-      }}
+      onSettings={() => setRefreshKey(k => k + 1)}
     >
       <div ref={containerRef} className="flex h-full flex-col">
+        {portfolioError && <p role="alert" className="mb-2 text-xs text-[var(--accent-red)]">{portfolioError} <button onClick={retryPortfolio} className="underline">Retry save</button></p>}
+        {quoteError && <p className="mb-2 text-xs text-[var(--text-secondary)]">{quoteError}</p>}
         {/* Total Value */}
         <div className="mb-3 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3">
           <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
@@ -237,10 +139,10 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
             {loading && Object.keys(prices).length === 0 ? (
               <div className="skeleton h-7 w-32" />
             ) : (
-              formatCurrency(portfolioData.totalValue)
+              hasAllPrices ? formatCurrency(portfolioData.totalValue) : "—"
             )}
           </div>
-          {portfolioData.totalCost > 0 && (
+          {hasAllPrices && portfolioData.totalCost > 0 && (
             <div className="mt-1 flex items-center gap-2">
               <span
                 className={`text-xs font-semibold ${
@@ -294,6 +196,7 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
 
         {/* Holdings */}
         <div className="flex-1 space-y-2 overflow-y-auto pr-1 min-h-0">
+          {holdings.length === 0 && <p className="py-4 text-center text-xs text-[var(--text-secondary)]">Add your first holding to track its value and performance.</p>}
           {portfolioData.holdings.map((h) => (
             <div
               key={h.id}
@@ -314,6 +217,7 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
                 <div>
                   <label className="text-[10px] text-[var(--text-muted)]">Ticker</label>
                   <input
+                    aria-label="Holding ticker"
                     value={h.ticker}
                     onChange={(e) =>
                       updateHolding(h.id, { ticker: e.target.value.toUpperCase() })
@@ -326,9 +230,12 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
                   <label className="text-[10px] text-[var(--text-muted)]">Qty</label>
                   <input
                     type="number"
+                    aria-label="Holding quantity"
+                    min="0"
+                    step="any"
                     value={h.quantity || ""}
                     onChange={(e) =>
-                      updateHolding(h.id, { quantity: Number(e.target.value) || 0 })
+                      updateHolding(h.id, { quantity: Math.max(0, Number(e.target.value) || 0) })
                     }
                     className="w-full rounded border border-[var(--border)] bg-[var(--bg-secondary)] px-1.5 py-0.5 text-xs outline-none"
                     placeholder="0"
@@ -338,10 +245,12 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
                   <label className="text-[10px] text-[var(--text-muted)]">Avg Cost</label>
                   <input
                     type="number"
+                    aria-label="Holding average cost"
+                    min="0"
                     step="0.01"
                     value={h.avgCost || ""}
                     onChange={(e) =>
-                      updateHolding(h.id, { avgCost: Number(e.target.value) || 0 })
+                      updateHolding(h.id, { avgCost: Math.max(0, Number(e.target.value) || 0) })
                     }
                     className="w-full rounded border border-[var(--border)] bg-[var(--bg-secondary)] px-1.5 py-0.5 text-xs outline-none"
                     placeholder="0.00"

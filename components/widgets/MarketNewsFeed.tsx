@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import type { FinnhubNewsItem } from "@/lib/finnhub";
+import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
 import WidgetBase from "@/components/widgets/WidgetBase";
 
 type MarketNewsFeedProps = {
   apiKey: string;
   onClose?: () => void;
+  category?: "general" | "crypto" | "forex" | "merger";
 };
 
 function timeAgo(timestamp: number): string {
@@ -20,8 +23,8 @@ function timeAgo(timestamp: number): string {
   return `${days}d ago`;
 }
 
-export default function MarketNewsFeed({ apiKey, onClose }: MarketNewsFeedProps) {
-  const [items, setItems] = useState<any[]>([]);
+export default function MarketNewsFeed({ apiKey, onClose, category = "general" }: MarketNewsFeedProps) {
+  const [items, setItems] = useState<FinnhubNewsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<ApiClient | null>(null);
@@ -39,14 +42,14 @@ export default function MarketNewsFeed({ apiKey, onClose }: MarketNewsFeedProps)
     setError(null);
     
     try {
-      const news = await clientRef.current.getMarketNews("general");
+      const news = await clientRef.current.getMarketNews(category);
       setItems(news.slice(0, 15)); // Limit to 15 items
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [category]);
 
   useEffect(() => {
     if (apiKey) {

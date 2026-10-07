@@ -1,178 +1,98 @@
-# FinDash — Notion-Inspired Financial Dashboard
+# FinDash
 
-A sleek, customisable financial dashboard built with **Next.js 16**, **Tailwind CSS 4**, and **Supabase Auth**. Drag, resize, and rearrange real-time market widgets on a free-form grid — think Notion meets Bloomberg Terminal.
+A financial workspace for the web: draggable market widgets, multiple dashboards, watchlists, company news and a portfolio tracker. Built with Next.js, React, TypeScript and **Neon PostgreSQL**, compatible with **Vercel**.
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38bdf8?logo=tailwindcss)
-![Supabase](https://img.shields.io/badge/Supabase-Auth-3ecf8e?logo=supabase)
-![Finnhub](https://img.shields.io/badge/Finnhub-API-orange)
-![License](https://img.shields.io/badge/License-MIT-blue)
+## Deploy to Vercel
 
----
+1. Import [this repository](https://github.com/JayadityaVetsa/FinDashDesign) into Vercel, or use the existing project.
+2. In the Vercel project, open **Storage** and create/connect **Neon Postgres** from the Marketplace. Choose the plan appropriate for your usage. This supplies `DATABASE_URL` (the app also accepts `POSTGRES_URL`). Make sure the variable is available to **Production**; use a separate database/branch for **Preview** when possible.
+3. Redeploy after connecting the database. The app creates its schema automatically when first used, with database locking to handle simultaneous serverless starts. No Supabase project or manual SQL setup is required.
+4. Open the public site, select **Create an account**, and enter an email and password of at least 10 characters. Each user connects their own [Finnhub API key](https://finnhub.io/register) during onboarding and picks a starting layout.
 
-## Features
+Every user has a private workspace. Data persists in Neon, across Vercel function shutdowns, deploys and device changes. Neon can scale its compute to zero while idle and wake it automatically for queries; provider plan limits still apply. See [Neon on Vercel](https://vercel.com/marketplace/neon) and [Neon's scale-to-zero documentation](https://neon.com/docs/introduction/scale-to-zero).
 
-### Dashboard Grid
-- **Drag & drop** widgets anywhere on the grid via grab handles
-- **Resize** any widget by dragging its corner
-- Layout **auto-saves** to `localStorage` and persists across reloads
-- **Add / remove** widgets on the fly from the floating action button
-- Smooth CSS-transform animations and a placeholder preview while dragging
+**Pushing code alone does not create a cloud database or set Vercel environment variables.** The one-time Neon connection is required. Missing configuration is shown as a setup error instead of an endless spinner or a redirect loop.
 
-### Multi-Dashboard Support
-- **Create multiple dashboards** for different purposes (e.g., "Main Portfolio", "Commodities", "News & Events")
-- **Sidebar navigation** to switch between dashboards quickly
-- **Rename and delete** dashboards with confirmation
-- Each dashboard has its own widget layout and configuration
-- **Blank template** option for starting fresh
+## Local development
 
-### Widgets (15+ built-in)
-| Widget | Description |
-|---|---|
-| **Stock Quote** | Live price, % change, OHLC data, and optional sparkline |
-| **Price Chart** | Candlestick-resolution line chart with 1D–1Y range selector |
-| **Company News** | Sentiment-tagged news feed for any ticker (editable) |
-| **Market News** | General financial headlines |
-| **Portfolio Tracker** | Add holdings (ticker / qty / avg cost), live P&L, and donut allocation chart |
-| **Watchlist** | Sortable table of tickers with price, change (responsive card/table view) |
-| **Market Overview** | Major-index quotes with mini sparklines |
-| **Sector Heatmap** | Color-coded sector performance at a glance (responsive grid) |
-| **Earnings Calendar** | Upcoming earnings dates and EPS estimates |
-| **Technical Indicators** | Key financial metrics (P/E, market cap, 52-wk range, etc.) |
-| **Crypto Tracker** | Real-time cryptocurrency quotes (BTC, ETH, SOL, etc.) |
-| **Company Profile** | Detailed company information (market cap, industry, IPO date, etc.) |
-| **Forex Rates** | Foreign exchange rates with base currency selector |
-| **IPO Calendar** | Upcoming initial public offerings |
-| **Insider Sentiment** | Insider trading sentiment analysis with bar chart |
-
-### UI / UX
-- **Dark / Light theme** with system-preference detection and manual toggle
-- Notion-style hover-reveal drag handle and action buttons
-- Loading skeletons, price-pulse animations, and glass-morphism cards
-- **Responsive widgets** that adapt their layout when resized (vertical ↔ horizontal, hide/show elements)
-- **Scrollable dashboard** — all widgets accessible even when many are added
-- **Command palette** (`Ctrl+K` / `⌘K`) for instant stock search
-- Responsive breakpoints (`lg` / `md` / `sm`) — works on tablets too
-- Global rate-limit toast notifications
-- **Minimum widget sizes** enforced to prevent unreadable layouts
-
-### Data & Persistence
-- All market data from [Finnhub](https://finnhub.io/) (free tier supported)
-- Built-in API client with **request-level caching** and **deduplication**
-- Widget configs, layouts, and portfolio holdings saved to `localStorage` with version migration
-- API key entered once via onboarding flow or header input — never leaves the browser
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router) |
-| Styling | Tailwind CSS 4 + CSS custom properties |
-| Auth | Supabase (Google OAuth) |
-| Data | Finnhub REST API |
-| Charts | Recharts 3 |
-| Grid | react-grid-layout 2 |
-| Icons | Lucide React |
-| Language | TypeScript 5 |
-
----
-
-## Getting Started
-
-### Prerequisites
-- **Node.js** ≥ 18
-- A free **Finnhub** API key — [register here](https://finnhub.io/register)
-- A **Supabase** project (for auth) — [create one](https://supabase.com/dashboard)
-
-### 1. Clone & install
+Use Node.js **22.13+** and the same Neon connection (preferably a separate development branch):
 
 ```bash
-git clone https://github.com/<your-user>/FinDashDesign.git
-cd FinDashDesign
-npm install
+npm ci
 ```
 
-### 2. Configure environment
-
-Create a `.env.local` (or `.env`) file in the project root:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
-```
-
-> **Note:** The Finnhub API key is entered through the app UI (onboarding flow) and stored in the browser's `localStorage`. It never touches the server.
-
-**Vercel / production:** In Supabase → Authentication → URL Configuration, set **Site URL** to your live domain and add your callback URL (`https://<your-domain>/auth/callback`) under **Redirect URLs**. The app uses the current browser origin for OAuth callback so preview and production domains both work.
-
-### 3. Run the dev server
+Copy `.env.example` to `.env.local` and replace `DATABASE_URL` with your Neon connection string, then:
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). You'll be guided through:
-1. **Login (Google OAuth)** (Supabase auth)
-2. **Onboarding** — paste your Finnhub API key (verified live)
-3. **Dashboard** — start dragging widgets!
+Open http://localhost:3000. The database connection stays on the server; never use a `NEXT_PUBLIC_` prefix for it. `.env.local` is ignored by Git. Do not paste the connection string into an issue or commit it.
 
----
+To initialize the schema explicitly:
 
-## Project Structure
-
-```
-FinDashDesign/
-├── app/
-│   ├── (auth)/login/       # Google OAuth sign-in page
-│   ├── auth/callback/       # OAuth callback handler
-│   ├── dashboard/          # Main dashboard page
-│   ├── onboarding/         # First-time setup flow
-│   ├── clear-storage/      # Dev utility to reset localStorage
-│   ├── globals.css         # Theme variables & grid overrides
-│   └── layout.tsx          # Root layout + font loading
-├── components/
-│   ├── DashboardGrid.tsx   # react-grid-layout orchestrator
-│   ├── Header.tsx          # Top bar (search, API key, theme, sign-out)
-│   ├── OnboardingFlow.tsx  # 3-step onboarding wizard
-│   ├── CommandPalette.tsx  # ⌘K stock search modal
-│   ├── ChartDeferredRender.tsx  # Stable chart rendering wrapper
-│   └── widgets/            # All 10 widget components
-├── lib/
-│   ├── finnhub.ts          # Finnhub API types & fetch helpers
-│   ├── apiClient.ts        # Caching + dedup API client
-│   ├── cache.ts            # localStorage cache with TTL
-│   ├── storage.ts          # Typed localStorage helpers
-│   ├── formatters.ts       # Currency / number / percent formatters
-│   ├── widgetConfig.ts     # Widget type definitions & presets
-│   └── supabaseClient.ts   # Supabase client singleton
-└── hooks/
-    └── useKeyboardShortcuts.ts
+```bash
+npm run db:migrate
 ```
 
----
+The schema uses `findash_` table/function prefixes to avoid colliding with other apps. Initialization is idempotent and preserves existing data.
 
-## Available Scripts
+## What works
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start dev server with Turbopack |
-| `npm run build` | Production build |
-| `npm run start` | Serve the production build |
-| `npm run lint` | Run ESLint |
+- Email/password accounts with scrypt password hashes, hashed random session tokens, HttpOnly/SameSite cookies, rate limiting and same-origin checks. HTTPS deployments use Secure cookies.
+- Account-scoped dashboard CRUD, active dashboard, theme and sidebar preference. Ownership is always checked on the server.
+- Atomic onboarding that actually uses the selected preset, and safe retries that do not duplicate dashboards.
+- Debounced, serialized layout/portfolio saves, visible failure messages, retry controls and account-scoped browser recovery of pending edits.
+- Watchlist tickers, chart ticker/range and other widget settings persist to their dashboard.
+- Empty portfolios remain empty; failed quotes do not show a fabricated total loss.
+- Shared portfolio state across multiple portfolio widgets, stock search (**Ctrl/Command+K**), refresh controls, loading states and a usable mobile dashboard.
+- Stale tabs cannot write one account's changes after another account signs in in the same browser.
 
----
+Changes are fetched from the server when opening or reloading a workspace. An already-open tab on another device needs a reload to see changes made elsewhere.
 
-## Configuration Notes
+## Market data
 
-- **React Strict Mode** is disabled in `next.config.ts` to prevent double-render issues with Recharts dimension calculations.
-- **Layout version** (`LAYOUT_VERSION` in `DashboardGrid.tsx`) is bumped when default widget positions change — this auto-resets stale layouts in `localStorage`.
-- **Portfolio version** (`PORTFOLIO_VERSION` in `PortfolioTracker.tsx`) works similarly for saved holdings.
-- The `ChartDeferredRender` wrapper delays Recharts mounting until the container has valid dimensions, preventing the infamous `width(-1) height(-1)` error.
+Live market data needs a valid Finnhub key. Availability depends on the plan and symbol coverage. Price history and some crypto/forex endpoints may require a paid plan; unavailable features show an error. Caching and in-flight deduplication are scoped to the API key, so another key cannot be incorrectly validated by cached data.
 
----
+Keys are saved in the user's private database profile and sent to Finnhub for market requests. They are not encrypted at rest; protect database credentials, exports and operator access. No database credentials are exposed to the browser.
 
-## License
+## Configuration
 
-MIT — use it however you like.
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Neon Postgres connection string; server-only |
+| `POSTGRES_URL` | Accepted as a fallback for Vercel Postgres/Neon integrations |
+| `APP_ORIGIN` | Optional exact public origin for CSRF checks; omit to support production and preview domains |
+| `ALLOW_REGISTRATION` | Defaults to `true`; set `false` to close new registrations |
+
+The app uses the Neon HTTP driver and database-backed sessions/rate limits, so it does not depend on persistent Vercel disk or process memory. Production builds do not require database credentials; runtime requests do.
+
+## Backups and account recovery
+
+Use Neon's backup/restore features for your plan, or export the PostgreSQL database with `pg_dump`. Keep exports private: they contain accounts, sessions and API keys. Use a separate Neon development/preview branch so testing does not mutate production data.
+
+Email addresses serve as account identifiers and are not verified. There is no email password-reset service. The operator can reset an account with the CLI: set `FINDASH_NEW_PASSWORD` in your terminal environment, then run:
+
+```bash
+npm run reset-password -- you@example.com
+```
+
+The command loads `.env.local`, changes the password and revokes existing sessions. Remove `FINDASH_NEW_PASSWORD` from the environment afterward. An email verification/reset provider can be added separately if needed.
+
+## Verification
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
+```
+
+Unit tests cover save ordering, retry recovery, credential-scoped caching, presets, concurrent/atomic workspace initialization and password/session security. Production API tests cover account creation, authentication, ownership checks, CRUD, CSRF, empty portfolios, persistence across app restarts, stale tabs and logout. Tests run real PostgreSQL through PGlite using a local Neon HTTP gateway, so cloud credentials are not required for CI. Live Neon/Vercel connectivity must also be checked after the integrations are connected.
+
+GitHub Actions runs these checks on pushes and pull requests. The framework was upgraded to the patched Next.js release. Development lint dependencies can still appear in `npm audit`; do not force a Next.js downgrade to address them.
+
+## Previous Supabase accounts
+
+Supabase Auth has been removed. Create a new FinDash account; previous Supabase accounts and data are not automatically imported. If your old Supabase project becomes available, export any dashboards/holdings you want to migrate.

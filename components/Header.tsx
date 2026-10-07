@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Key, Sun, Moon, LogOut, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Key, Sun, Moon, LogOut, PanelLeftClose, PanelLeft, Search, RefreshCw } from "lucide-react";
 import APIKeyIndicator from "@/components/APIKeyIndicator";
 
 type HeaderProps = {
   apiKey: string;
+  validatedApiKey?: string;
+  onSearch?: () => void;
+  onRefresh?: () => void;
   onApiKeyChange: (key: string) => void;
   onApiKeyCommit?: (key: string) => void;
   onSignOut: () => void;
@@ -16,6 +19,9 @@ type HeaderProps = {
 
 export default function Header({
   apiKey,
+  validatedApiKey,
+  onSearch,
+  onRefresh,
   onApiKeyChange,
   onApiKeyCommit,
   onSignOut,
@@ -29,7 +35,10 @@ export default function Header({
   // Initialize theme
   useEffect(() => {
     if (typeof document !== "undefined") {
-      setIsDark(document.documentElement.classList.contains("dark"));
+      const observer = new MutationObserver(() => setIsDark(document.documentElement.classList.contains("dark")));
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+      const frame = requestAnimationFrame(() => setIsDark(document.documentElement.classList.contains("dark")));
+      return () => { observer.disconnect(); cancelAnimationFrame(frame); };
     }
   }, []);
 
@@ -42,7 +51,7 @@ export default function Header({
     } else {
       document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem("findash-theme", themeName);
+    try { localStorage.setItem("findash-theme", themeName); } catch { /* unavailable */ }
     onThemeChange?.(themeName);
   };
 
@@ -54,7 +63,7 @@ export default function Header({
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+              className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
               title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {sidebarCollapsed ? (
@@ -68,15 +77,17 @@ export default function Header({
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent-blue)] text-sm font-bold text-white">
               F
             </div>
-            <span className="text-sm font-semibold text-[var(--text-primary)]">
+            <span className="hidden sm:inline text-sm font-semibold text-[var(--text-primary)]">
               FinDash
             </span>
           </div>
-          <APIKeyIndicator apiKey={apiKey} />
+          <APIKeyIndicator apiKey={validatedApiKey ?? apiKey} />
         </div>
 
         {/* Right: API key, theme, sign out */}
         <div className="flex items-center gap-2">
+          <button onClick={onSearch} aria-label="Search stocks" title="Search stocks (Ctrl/⌘ K)" className="p-2"><Search className="h-4 w-4" /></button>
+          <button onClick={onRefresh} aria-label="Refresh market data" className="p-2"><RefreshCw className="h-4 w-4" /></button>
           {/* API Key input */}
           <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2 py-1">
             <Key className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
@@ -84,7 +95,8 @@ export default function Header({
               type={showKey ? "text" : "password"}
               value={apiKey}
               onChange={(e) => onApiKeyChange(e.target.value)}
-              className="w-36 bg-transparent text-xs outline-none placeholder:text-[var(--text-muted)]"
+              aria-label="Finnhub API key"
+              className="w-12 sm:w-36 bg-transparent text-xs outline-none placeholder:text-[var(--text-muted)]"
               placeholder="Enter Finnhub API key"
               onBlur={() => {
                 onApiKeyCommit?.(apiKey);
@@ -107,6 +119,7 @@ export default function Header({
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
+            aria-label="Toggle color theme"
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-secondary)] transition-colors hover:border-[var(--border-active)] hover:text-[var(--text-primary)]"
           >
             {isDark ? (
@@ -119,6 +132,7 @@ export default function Header({
           {/* Sign out */}
           <button
             onClick={onSignOut}
+            aria-label="Sign out"
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-red)] hover:text-[var(--accent-red)]"
           >
             <LogOut className="h-4 w-4" />

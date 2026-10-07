@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import type { FinnhubQuote } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
@@ -10,6 +11,7 @@ type WatchlistProps = {
   apiKey: string;
   tickers?: string[];
   onClose?: () => void;
+  onTickersChange?: (tickers: string[]) => void;
 };
 
 type SortField = "ticker" | "price" | "change";
@@ -19,9 +21,10 @@ export default function Watchlist({
   apiKey,
   tickers: initialTickers = ["AAPL", "MSFT", "GOOGL"],
   onClose,
+  onTickersChange,
 }: WatchlistProps) {
   const [tickers, setTickers] = useState<string[]>(initialTickers);
-  const [quotes, setQuotes] = useState<Record<string, any>>({});
+  const [quotes, setQuotes] = useState<Record<string, FinnhubQuote>>({});
   const [loading, setLoading] = useState(false);
   const [sortField, setSortField] = useState<SortField>("ticker");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -64,7 +67,7 @@ export default function Watchlist({
         })
       );
 
-      const quotesMap: Record<string, any> = {};
+      const quotesMap: Record<string, FinnhubQuote> = {};
       results.forEach((result) => {
         if (result.quote) {
           quotesMap[result.ticker] = result.quote;
@@ -118,17 +121,19 @@ export default function Watchlist({
     const ticker = newTicker.trim().toUpperCase();
     if (ticker && !tickers.includes(ticker)) {
       setTickers([...tickers, ticker]);
+      onTickersChange?.([...tickers, ticker]);
       setNewTicker("");
     }
   };
 
   const removeTicker = (ticker: string) => {
     setTickers(tickers.filter((t) => t !== ticker));
+    onTickersChange?.(tickers.filter((t) => t !== ticker));
   };
 
   const isCompact = containerWidth < 320;
 
-  const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+  const sortButton = (field: SortField, children: React.ReactNode) => (
     <button
       onClick={() => handleSort(field)}
       className="flex items-center gap-1 hover:text-[var(--accent-blue)]"
@@ -163,7 +168,7 @@ export default function Watchlist({
         </div>
 
         {/* Card view for compact / List view for wide */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" aria-busy={loading}>
           {isCompact ? (
             /* Compact card view */
             <div className="space-y-1.5">
@@ -221,13 +226,13 @@ export default function Watchlist({
               <thead className="sticky top-0 bg-[var(--bg-primary)]">
                 <tr className="border-b border-[var(--border)]">
                   <th className="py-1.5 text-left">
-                    <SortButton field="ticker">Ticker</SortButton>
+                    {sortButton("ticker", "Ticker")}
                   </th>
                   <th className="py-1.5 text-right">
-                    <SortButton field="price">Price</SortButton>
+                    {sortButton("price", "Price")}
                   </th>
                   <th className="py-1.5 text-right">
-                    <SortButton field="change">Change</SortButton>
+                    {sortButton("change", "Change")}
                   </th>
                   <th className="w-6"></th>
                 </tr>

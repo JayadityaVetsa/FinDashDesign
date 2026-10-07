@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { errorMessage } from "@/lib/errors";
+import type { FinnhubCompanyProfile, FinnhubBasicFinancials } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
-import { formatCurrency } from "@/lib/formatters";
+import Image from "next/image";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import { Globe, Building2, Calendar } from "lucide-react";
 
@@ -21,8 +23,8 @@ export default function CompanyProfile({
 }: CompanyProfileProps) {
   const [ticker, setTicker] = useState(initialTicker);
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
-  const [financials, setFinancials] = useState<any>(null);
+  const [profile, setProfile] = useState<FinnhubCompanyProfile | null>(null);
+  const [financials, setFinancials] = useState<FinnhubBasicFinancials | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(400);
@@ -46,7 +48,7 @@ export default function CompanyProfile({
     }
   }, [apiKey]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!clientRef.current || !ticker.trim()) return;
 
     setLoading(true);
@@ -68,18 +70,18 @@ export default function CompanyProfile({
       if (financialsData.status === "fulfilled") {
         setFinancials(financialsData.value);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load data");
+    } catch (err: unknown) {
+      setError(errorMessage(err) || "Failed to load data");
     } finally {
       setLoading(false);
     }
-  };
+  }, [ticker]);
 
   useEffect(() => {
     if (apiKey && ticker) {
       loadData();
     }
-  }, [apiKey, ticker]);
+  }, [apiKey, ticker, loadData]);
 
   const handleTickerSubmit = (newTicker: string) => {
     const symbol = newTicker.trim().toUpperCase();
@@ -90,7 +92,7 @@ export default function CompanyProfile({
     }
   };
 
-  const metric = financials?.metric || {};
+  const metric: Partial<FinnhubBasicFinancials["metric"]> = financials?.metric || {};
   const marketCap = profile?.marketCapitalization || metric.marketCapitalization || 0;
 
   return (
@@ -138,7 +140,7 @@ export default function CompanyProfile({
             {/* Company header */}
             <div className="flex items-start gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3">
               {profile.logo && (
-                <img
+                <Image unoptimized width={40} height={40}
                   src={profile.logo}
                   alt={profile.name}
                   className="h-10 w-10 rounded-lg bg-white object-contain p-1"

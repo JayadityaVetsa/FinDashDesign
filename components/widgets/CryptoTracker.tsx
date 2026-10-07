@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import type { FinnhubQuote } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
@@ -28,7 +29,7 @@ type CryptoItem = {
 
 export default function CryptoTracker({ apiKey, onClose }: CryptoTrackerProps) {
   const [cryptos, setCryptos] = useState<CryptoItem[]>(DEFAULT_CRYPTOS);
-  const [quotes, setQuotes] = useState<Record<string, any>>({});
+  const [quotes, setQuotes] = useState<Record<string, FinnhubQuote>>({});
   const [loading, setLoading] = useState(false);
   const [newSymbol, setNewSymbol] = useState("");
   const [containerWidth, setContainerWidth] = useState(400);
@@ -68,7 +69,7 @@ export default function CryptoTracker({ apiKey, onClose }: CryptoTrackerProps) {
         })
       );
 
-      const quotesMap: Record<string, any> = {};
+      const quotesMap: Record<string, FinnhubQuote> = {};
       results.forEach((result) => {
         if (result.quote) {
           quotesMap[result.symbol] = result.quote;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import { ArrowRightLeft } from "lucide-react";
@@ -48,11 +49,11 @@ export default function ForexRates({ apiKey, onClose }: ForexRatesProps) {
     try {
       const data = await clientRef.current.getForexRates(baseCurrency);
       setRates(data.quote || {});
-    } catch (err: any) {
-      if (err.message?.includes("ACCESS_DENIED")) {
+    } catch (err: unknown) {
+      if (errorMessage(err).includes("ACCESS_DENIED")) {
         setError("Forex rates require a premium plan.");
       } else {
-        setError(err.message || "Failed to load forex rates");
+        setError(errorMessage(err) || "Failed to load forex rates");
       }
     } finally {
       setLoading(false);

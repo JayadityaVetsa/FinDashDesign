@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import type { FinnhubIPOEvent } from "@/lib/finnhub";
+import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import { Rocket } from "lucide-react";
@@ -11,7 +13,7 @@ type IPOCalendarProps = {
 };
 
 export default function IPOCalendar({ apiKey, onClose }: IPOCalendarProps) {
-  const [ipos, setIpos] = useState<any[]>([]);
+  const [ipos, setIpos] = useState<FinnhubIPOEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<ApiClient | null>(null);
@@ -43,11 +45,11 @@ export default function IPOCalendar({ apiKey, onClose }: IPOCalendarProps) {
         .slice(0, 15);
 
       setIpos(sorted);
-    } catch (err: any) {
-      if (err.message?.includes("ACCESS_DENIED")) {
+    } catch (err: unknown) {
+      if (errorMessage(err).includes("ACCESS_DENIED")) {
         setError("IPO calendar may require a premium plan.");
       } else {
-        setError(err.message || "Failed to load IPO data");
+        setError(errorMessage(err) || "Failed to load IPO data");
       }
     } finally {
       setLoading(false);

@@ -11,6 +11,8 @@ import {
   ComposedChart,
   Bar,
 } from "recharts";
+import type { FinnhubCandle } from "@/lib/finnhub";
+import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
 import { formatCurrency } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
@@ -21,6 +23,8 @@ type PriceChartProps = {
   ticker?: string;
   timeRange?: string;
   onClose?: () => void;
+  onTickerChange?: (ticker: string) => void;
+  onTimeRangeChange?: (range: string) => void;
 };
 
 const TIME_RANGES = [
@@ -37,11 +41,13 @@ export default function PriceChart({
   ticker: initialTicker = "AAPL",
   timeRange: initialTimeRange = "1M",
   onClose,
+  onTickerChange,
+  onTimeRangeChange,
 }: PriceChartProps) {
   const [ticker, setTicker] = useState(initialTicker);
   const [isEditing, setIsEditing] = useState(false);
   const [timeRange, setTimeRange] = useState(initialTimeRange);
-  const [candleData, setCandleData] = useState<any>(null);
+  const [candleData, setCandleData] = useState<FinnhubCandle | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<ApiClient | null>(null);
@@ -75,8 +81,8 @@ export default function PriceChart({
       } else {
         setCandleData(data);
       }
-    } catch (err: any) {
-      const message = err.message || "Failed to load chart data";
+    } catch (err: unknown) {
+      const message = errorMessage(err) || "Failed to load chart data";
       // Make errors more user-friendly
       if (message.includes("ACCESS_DENIED") || message.includes("403")) {
         setError("Chart data requires a premium Finnhub plan. Quotes and news still work on the free tier.");
@@ -93,7 +99,8 @@ export default function PriceChart({
 
   useEffect(() => {
     if (apiKey && ticker) {
-      loadData();
+      const timeout = setTimeout(loadData, 0);
+      return () => clearTimeout(timeout);
     }
   }, [apiKey, ticker, timeRange, loadData]);
 
@@ -119,6 +126,7 @@ export default function PriceChart({
     const symbol = newTicker.trim().toUpperCase();
     if (symbol) {
       setTicker(symbol);
+      onTickerChange?.(symbol);
       setIsEditing(false);
     }
   };
@@ -153,7 +161,7 @@ export default function PriceChart({
             {TIME_RANGES.map((range) => (
               <button
                 key={range.label}
-                onClick={() => setTimeRange(range.label)}
+                onClick={() => { setTimeRange(range.label); onTimeRangeChange?.(range.label); }}
                 className={`rounded-md px-2 py-1 text-[11px] font-semibold transition-colors ${
                   timeRange === range.label
                     ? "bg-[var(--accent-blue)] text-white"
@@ -265,7 +273,7 @@ export default function PriceChart({
                     return (Number(value) || 0).toLocaleString();
                   }}
                   labelFormatter={(label) =>
-                    new Date(label as any).toLocaleString("en-US", {
+                    new Date(String(label)).toLocaleString("en-US", {
                       dateStyle: "medium",
                       timeStyle: "short",
                     })

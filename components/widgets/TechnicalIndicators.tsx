@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { errorMessage } from "@/lib/errors";
+import type { FinnhubCompanyProfile, FinnhubBasicFinancials } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
@@ -20,8 +22,8 @@ export default function TechnicalIndicators({
 }: TechnicalIndicatorsProps) {
   const [ticker, setTicker] = useState(initialTicker);
   const [isEditing, setIsEditing] = useState(false);
-  const [financials, setFinancials] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [financials, setFinancials] = useState<FinnhubBasicFinancials | null>(null);
+  const [profile, setProfile] = useState<FinnhubCompanyProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(400);
@@ -46,7 +48,7 @@ export default function TechnicalIndicators({
     return () => observer.disconnect();
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!clientRef.current || !ticker.trim()) return;
     
     setLoading(true);
@@ -57,10 +59,10 @@ export default function TechnicalIndicators({
     try {
       const financialsData = await clientRef.current.getBasicFinancials(symbol);
       setFinancials(financialsData);
-    } catch (err: any) {
-      if (err.message?.includes("ACCESS_DENIED")) {
+    } catch (err: unknown) {
+      if (errorMessage(err).includes("ACCESS_DENIED")) {
         setError("Basic financials require premium API access.");
-      }
+      } else setError(errorMessage(err));
     }
     
     try {
@@ -71,13 +73,13 @@ export default function TechnicalIndicators({
     }
     
     setLoading(false);
-  };
+  }, [ticker]);
 
   useEffect(() => {
     if (apiKey && ticker) {
       loadData();
     }
-  }, [apiKey, ticker]);
+  }, [apiKey, ticker, loadData]);
 
   const handleTickerSubmit = (newTicker: string) => {
     const symbol = newTicker.trim().toUpperCase();
@@ -88,7 +90,7 @@ export default function TechnicalIndicators({
     }
   };
 
-  const metric = financials?.metric || {};
+  const metric: Partial<FinnhubBasicFinancials["metric"]> = financials?.metric || {};
   const marketCap = profile?.marketCapitalization || metric.marketCapitalization || 0;
 
   const indicators = [

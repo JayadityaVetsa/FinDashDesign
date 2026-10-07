@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import type { FinnhubQuote } from "@/lib/finnhub";
+import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
@@ -22,7 +24,7 @@ export default function StockQuoteCard({
 }: StockQuoteCardProps) {
   const [ticker, setTicker] = useState(initialTicker);
   const [isEditing, setIsEditing] = useState(false);
-  const [quote, setQuote] = useState<any>(null);
+  const [quote, setQuote] = useState<FinnhubQuote | null>(null);
   const [sparkline, setSparkline] = useState<{ date: string; close: number }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,8 +56,8 @@ export default function StockQuoteCard({
         setTimeout(() => setPricePulse(null), 600);
       }
       prevPriceRef.current = quoteData.c;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(errorMessage(err));
     }
 
     // Then try sparkline separately — don't fail if candle 403s

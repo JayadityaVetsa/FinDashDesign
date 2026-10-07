@@ -26,7 +26,7 @@ export default function Home() {
 
           <nav className="flex items-center gap-3 text-xs font-medium text-[var(--text-secondary)]">
             <span className="hidden sm:inline text-[var(--text-muted)]">
-              Built with Next.js, Finnhub & Supabase
+              Your markets. Your workspace.
             </span>
             <a
               href="/login"
@@ -94,7 +94,7 @@ export default function Home() {
                 </dt>
                 <dd className="mt-1">
                   Dashboards, portfolio, and settings are saved to your
-                  Supabase-backed account — sign in on any device and pick up
+                  Personal account — sign in on any device and pick up
                   where you left off.
                 </dd>
               </div>
@@ -209,7 +209,7 @@ export default function Home() {
               Drag &amp; drop dashboards
             </h3>
             <p className="mt-1.5">
-              Free-form grid powered by <span className="mono">react-grid-layout</span>.
+              Make the canvas your own.
               Every widget can be resized, rearranged, or removed in a couple of
               clicks.
             </p>
@@ -219,7 +219,7 @@ export default function Home() {
               Real-time market data
             </h3>
             <p className="mt-1.5">
-              Live quotes, news, earnings, crypto, and forex via Finnhub&apos;s free
+              Quotes, news, and earnings via Finnhub&apos;s free
               tier — with request-level caching and rate-limit protection built-in.
             </p>
           </div>
@@ -229,7 +229,7 @@ export default function Home() {
             </h3>
             <p className="mt-1.5">
               Create dashboards for your main portfolio, a trading setup, or a news
-              wall. Layouts auto-save to your Supabase account and sync across
+              wall. Layouts auto-save to your FinDash account and sync across
               devices.
             </p>
           </div>

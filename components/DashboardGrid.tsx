@@ -107,14 +107,12 @@ type DashboardGridProps = {
   apiKey: string;
   widgets: WidgetConfig[];
   onWidgetsChange: (widgets: WidgetConfig[]) => void;
-  onStockSelect?: (symbol: string) => void;
 };
 
 export default function DashboardGrid({
   apiKey,
   widgets,
   onWidgetsChange,
-  onStockSelect,
 }: DashboardGridProps) {
   const [mounted, setMounted] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -129,8 +127,8 @@ export default function DashboardGrid({
 
   // Delay mount to let layout settle
   useEffect(() => {
-    setMounted(false);
-    requestAnimationFrame(() => setMounted(true));
+    const frame = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const layouts = useMemo(() => configsToLayouts(widgets), [widgets]);
@@ -227,6 +225,8 @@ export default function DashboardGrid({
             ticker={(config.settings.ticker as string) || "AAPL"}
             timeRange={(config.settings.timeRange as string) || "1M"}
             onClose={onClose}
+            onTickerChange={(ticker) => handleUpdateWidgetSettings(config.id, { ticker })}
+            onTimeRangeChange={(timeRange) => handleUpdateWidgetSettings(config.id, { timeRange })}
           />
         );
       case "news-feed":
@@ -252,6 +252,7 @@ export default function DashboardGrid({
             {...commonProps}
             tickers={(config.settings.tickers as string[]) || ["AAPL", "MSFT", "GOOGL"]}
             onClose={onClose}
+            onTickersChange={(tickers) => handleUpdateWidgetSettings(config.id, { tickers })}
           />
         );
       case "technical-indicators":
@@ -260,10 +261,11 @@ export default function DashboardGrid({
             {...commonProps}
             ticker={(config.settings.ticker as string) || "AAPL"}
             onClose={onClose}
+            onTickerChange={(ticker) => handleUpdateWidgetSettings(config.id, { ticker })}
           />
         );
       case "market-news":
-        return <MarketNewsFeed {...commonProps} onClose={onClose} />;
+        return <MarketNewsFeed {...commonProps} onClose={onClose} category={(config.settings.category as "general" | "forex" | "crypto" | "merger") || "general"} />;
       case "crypto-tracker":
         return <CryptoTracker {...commonProps} onClose={onClose} />;
       case "company-profile":
@@ -306,11 +308,15 @@ export default function DashboardGrid({
 
   return (
     <>
+      {widgets.length === 0 && <div className="rounded-2xl border border-dashed border-[var(--border)] p-12 text-center">
+        <h2 className="font-semibold">Start with what matters to you</h2><p className="mt-2 text-sm text-[var(--text-secondary)]">Add a quote, watchlist, portfolio, or news widget to this dashboard.</p>
+        <button onClick={() => setAddModalOpen(true)} className="mt-5 rounded-lg bg-[var(--accent-blue)] px-5 py-2 text-white">Add your first widget</button>
+      </div>}
       <ResponsiveGridLayout
         className="layout"
         layouts={layouts}
         breakpoints={{ lg: 1200, md: 900, sm: 600, xs: 0 }}
-        cols={{ lg: 12, md: 10, sm: 6, xs: 2 }}
+        cols={{ lg: 12, md: 10, sm: 6, xs: 6 }}
         rowHeight={40}
         margin={[16, 16]}
         containerPadding={[0, 0]}

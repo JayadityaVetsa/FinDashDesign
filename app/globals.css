@@ -6,6 +6,8 @@
 
 /* Premium Financial Terminal Color Palette */
 :root {
+  --font-inter: "Inter", "Segoe UI", Arial, sans-serif;
+  --font-jetbrains-mono: "Cascadia Code", Consolas, monospace;
   --bg-primary: #0a0a0f;
   --bg-secondary: #111118;
   --bg-card: #16161f;

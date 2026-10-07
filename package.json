@@ -6,12 +6,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/unit.test.cjs",
+    "test:e2e": "node --test tests/e2e.test.cjs",
+    "db:migrate": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/migrate.mjs",
+    "reset-password": "node --env-file-if-exists=.env.local scripts/reset-password.mjs"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.99.1",
+    "@neondatabase/serverless": "^1.2.0",
     "lucide-react": "^0.577.0",
-    "next": "16.1.6",
+    "next": "^16.4.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-grid-layout": "^2.2.2",
@@ -19,12 +27,13 @@
     "recharts": "^3.8.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "^16.4.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

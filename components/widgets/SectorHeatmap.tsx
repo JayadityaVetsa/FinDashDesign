@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import type { FinnhubQuote } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
 import { formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
@@ -23,7 +24,7 @@ const SECTORS = [
 ];
 
 export default function SectorHeatmap({ apiKey, onClose }: SectorHeatmapProps) {
-  const [quotes, setQuotes] = useState<Record<string, any>>({});
+  const [quotes, setQuotes] = useState<Record<string, FinnhubQuote>>({});
   const [loading, setLoading] = useState(false);
   const [containerWidth, setContainerWidth] = useState(400);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -63,7 +64,7 @@ export default function SectorHeatmap({ apiKey, onClose }: SectorHeatmapProps) {
         })
       );
 
-      const quotesMap: Record<string, any> = {};
+      const quotesMap: Record<string, FinnhubQuote> = {};
       results.forEach((result) => {
         if (result) {
           quotesMap[result.symbol] = result.quote;

@@ -100,7 +100,7 @@ async function fetchFinnhub<T>(
     url.searchParams.set(key, value);
   });
 
-  const response = await fetch(url.toString());
+  const response = await fetch(url.toString(), { signal: AbortSignal.timeout(15000) });
   
   if (response.status === 429) {
     throw new Error("RATE_LIMIT");
@@ -126,7 +126,7 @@ async function fetchFinnhub<T>(
   }
 
   // Check for error in response
-  if (data.error) {
+  if (data?.error) {
     throw new Error(data.error);
   }
 
@@ -139,7 +139,7 @@ export async function getQuote(
 ): Promise<FinnhubQuote> {
   const data = await fetchFinnhub<FinnhubQuote>("/quote", { symbol }, apiKey);
   // Finnhub returns all zeros for invalid symbols
-  if (data.c === 0 && data.h === 0 && data.l === 0 && data.o === 0 && data.pc === 0) {
+  if (!Number.isFinite(data.c) || data.c <= 0) {
     throw new Error(`No quote data for "${symbol}". Check the symbol is valid.`);
   }
   return data;

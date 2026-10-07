@@ -1,7 +1,7 @@
 import type { WidgetConfig } from "@/lib/widgetConfig";
 
 /* ------------------------------------------------------------------ */
-/*  Dashboard type (matches Supabase schema)                           */
+/*  Dashboard type (shared by the dashboard UI)                           */
 /* ------------------------------------------------------------------ */
 
 export type Dashboard = {
@@ -20,7 +20,7 @@ export const storageKeys = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Generic localStorage helpers (theme only)                          */
+/*  Generic localStorage helpers (recoverable pending edits)                          */
 /* ------------------------------------------------------------------ */
 
 export function readStorage<T>(key: string, fallback: T): T {
@@ -40,5 +40,5 @@ export function writeStorage<T>(key: string, value: T) {
   if (typeof window === "undefined") {
     return;
   }
-  window.localStorage.setItem(key, JSON.stringify(value));
+  try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* Storage may be disabled or full. */ }
 }

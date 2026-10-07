@@ -1,10 +1,8 @@
-import Script from "next/script";
 
 const themeInitScript = `
   (function () {
     try {
       var stored = localStorage.getItem("findash-theme");
-      var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       var theme = stored ? stored : "dark";
       if (theme === "dark") {
         document.documentElement.classList.add("dark");
@@ -17,9 +15,8 @@ const themeInitScript = `
 
 export default function ThemeScript() {
   return (
-    <Script
+    <script
       id="theme-init"
-      strategy="beforeInteractive"
       dangerouslySetInnerHTML={{ __html: themeInitScript }}
     />
   );

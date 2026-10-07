@@ -33,16 +33,16 @@ export default function CommandPalette({
 
   useEffect(() => {
     if (!isOpen) {
-      setQuery("");
-      setResults([]);
-      setSelectedIndex(0);
+      const frame = requestAnimationFrame(() => { setQuery(""); setResults([]); setSelectedIndex(0); });
+      return () => cancelAnimationFrame(frame);
     }
   }, [isOpen]);
 
   useEffect(() => {
+    let cancelled = false;
     if (!apiKey || query.trim().length < 2) {
-      setResults([]);
-      return;
+      const frame = requestAnimationFrame(() => { setResults([]); setLoading(false); });
+      return () => cancelAnimationFrame(frame);
     }
 
     const search = async () => {
@@ -50,18 +50,20 @@ export default function CommandPalette({
       try {
         const client = new ApiClient({ apiKey });
         const searchResults = await client.searchSymbol(query.trim());
+        if (cancelled) return;
         setResults(searchResults.slice(0, 10)); // Limit to 10 results
         setSelectedIndex(0);
       } catch (error) {
+        if (cancelled) return;
         console.error("Search error:", error);
         setResults([]);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     const timeout = setTimeout(search, 300);
-    return () => clearTimeout(timeout);
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, [query, apiKey]);
 
   useEffect(() => {

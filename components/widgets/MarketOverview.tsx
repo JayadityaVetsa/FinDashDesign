@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import ChartDeferredRender from "@/components/ChartDeferredRender";
+import type { FinnhubQuote } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
@@ -20,7 +21,7 @@ const INDICES = [
 ];
 
 export default function MarketOverview({ apiKey, onClose }: MarketOverviewProps) {
-  const [quotes, setQuotes] = useState<Record<string, any>>({});
+  const [quotes, setQuotes] = useState<Record<string, FinnhubQuote>>({});
   const [sparklines, setSparklines] = useState<Record<string, number[]>>({});
   const [loading, setLoading] = useState(false);
   const [containerWidth, setContainerWidth] = useState(400);
@@ -61,7 +62,7 @@ export default function MarketOverview({ apiKey, onClose }: MarketOverviewProps)
         })
       );
 
-      const quotesMap: Record<string, any> = {};
+      const quotesMap: Record<string, FinnhubQuote> = {};
       quoteResults.forEach((result) => {
         if (result) {
           quotesMap[result.symbol] = result.quote;
