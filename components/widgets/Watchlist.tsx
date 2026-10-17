@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import type { FinnhubQuote } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import { Plus, ArrowUpDown, TrendingUp, TrendingDown } from "lucide-react";
@@ -23,6 +24,7 @@ export default function Watchlist({
   onClose,
   onTickersChange,
 }: WatchlistProps) {
+  const demo = useDemoData();
   const [tickers, setTickers] = useState<string[]>(initialTickers);
   const [quotes, setQuotes] = useState<Record<string, FinnhubQuote>>({});
   const [loading, setLoading] = useState(false);
@@ -35,9 +37,9 @@ export default function Watchlist({
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   // Observe container width for responsive layout
   useEffect(() => {

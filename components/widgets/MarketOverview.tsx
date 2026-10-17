@@ -5,6 +5,7 @@ import { LineChart, Line, ResponsiveContainer } from "recharts";
 import ChartDeferredRender from "@/components/ChartDeferredRender";
 import type { FinnhubQuote } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
 
@@ -21,6 +22,7 @@ const INDICES = [
 ];
 
 export default function MarketOverview({ apiKey, onClose }: MarketOverviewProps) {
+  const demo = useDemoData();
   const [quotes, setQuotes] = useState<Record<string, FinnhubQuote>>({});
   const [sparklines, setSparklines] = useState<Record<string, number[]>>({});
   const [loading, setLoading] = useState(false);
@@ -41,9 +43,9 @@ export default function MarketOverview({ apiKey, onClose }: MarketOverviewProps)
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const loadData = async () => {
     if (!clientRef.current) return;
@@ -109,7 +111,7 @@ export default function MarketOverview({ apiKey, onClose }: MarketOverviewProps)
       const interval = setInterval(loadData, 60000);
       return () => clearInterval(interval);
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   return (
     <WidgetBase title="Market Overview" onClose={onClose}>

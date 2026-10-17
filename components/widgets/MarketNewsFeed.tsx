@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import type { FinnhubNewsItem } from "@/lib/finnhub";
 import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import WidgetBase from "@/components/widgets/WidgetBase";
 
 type MarketNewsFeedProps = {
@@ -24,6 +25,7 @@ function timeAgo(timestamp: number): string {
 }
 
 export default function MarketNewsFeed({ apiKey, onClose, category = "general" }: MarketNewsFeedProps) {
+  const demo = useDemoData();
   const [items, setItems] = useState<FinnhubNewsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,9 +33,9 @@ export default function MarketNewsFeed({ apiKey, onClose, category = "general" }
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const loadData = useCallback(async () => {
     if (!clientRef.current) return;

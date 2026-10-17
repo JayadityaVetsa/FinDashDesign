@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import type { FinnhubIPOEvent } from "@/lib/finnhub";
 import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import { Rocket } from "lucide-react";
 
@@ -13,6 +14,7 @@ type IPOCalendarProps = {
 };
 
 export default function IPOCalendar({ apiKey, onClose }: IPOCalendarProps) {
+  const demo = useDemoData();
   const [ipos, setIpos] = useState<FinnhubIPOEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,9 +22,9 @@ export default function IPOCalendar({ apiKey, onClose }: IPOCalendarProps) {
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const loadData = async () => {
     if (!clientRef.current) return;
@@ -60,7 +62,7 @@ export default function IPOCalendar({ apiKey, onClose }: IPOCalendarProps) {
     if (apiKey) {
       loadData();
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const formatValue = (val: number) => {
     if (!val) return "—";

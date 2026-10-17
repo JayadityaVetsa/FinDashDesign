@@ -9,9 +9,44 @@ const { widgets, holdings } = require('../lib/server/validation.ts');
 const { getDatabase, initializeWorkspace, listDashboards, getUserProfile } = require('../lib/server/database.ts');
 const { hashPassword, checkPassword, createSession, sessionFromToken, tokenHash, assertSameOrigin } = require('../lib/server/security.ts');
 const { startPostgresGateway } = require('./postgres-gateway.cjs');
+const { publicAnalyticsUrl } = require('../lib/publicAnalytics.ts');
+const { demoWidgets } = require('../lib/demoData.ts');
 let gateway;
 before(async () => { gateway = await startPostgresGateway(); process.env.DATABASE_URL = gateway.url; });
 after(async () => { await gateway.close(); });
+
+test('public demo uses isolated fixtures with no provider requests; a demo-looking key stays a real credential outside demo mode', async () => {
+  const original = global.fetch;
+  let calls = 0;
+  global.fetch = async () => { calls++; return new Response('{}', { status: 401 }); };
+  try {
+    const demo = new ApiClient({ apiKey: 'sample-data', demo: true });
+    const quote = await demo.getQuote('AAPL');
+    assert.ok(quote.c > 0);
+    const candles = await demo.getCandle('AAPL', 'D', 1000, 5000);
+    assert.equal(candles.c.length, candles.t.length);
+    assert.equal(candles.t[0], 1000);
+    assert.equal(candles.t.at(-1), 5000);
+    assert.equal((await demo.searchSymbol('Apple'))[0].symbol, 'AAPL');
+    assert.ok((await demo.getCompanyNews('AAPL','2026-01-01','2026-02-01'))[0].headline.startsWith('Sample:'));
+    assert.equal(calls, 0);
+    quote.c = -1;
+    assert.ok((await demo.getQuote('AAPL')).c > 0);
+    await assert.rejects(new ApiClient({ apiKey: 'sample-data' }).getQuote('AAPL'), /INVALID_KEY/);
+    assert.equal(calls, 1);
+    const layout = demoWidgets();
+    layout[0].settings.tickers.push('CHANGED');
+    assert.ok(!demoWidgets()[0].settings.tickers.includes('CHANGED'));
+  } finally { global.fetch = original; }
+});
+
+test('analytics drops private paths and strips public query strings and fragments', () => {
+  assert.equal(publicAnalyticsUrl('https://example.com/demo?key=secret#private'), 'https://example.com/demo');
+  assert.equal(publicAnalyticsUrl('https://example.com/login?email=private@example.com'), 'https://example.com/login');
+  for (const path of ['/dashboard','/onboarding','/api/workspace','/auth/callback','/clear-storage'])
+    assert.equal(publicAnalyticsUrl('https://example.com'+path), null);
+  assert.equal(publicAnalyticsUrl('not a url'), null);
+});
 
 test('dashboard switching does not cancel another dashboard save', async () => {
   const writes = [];

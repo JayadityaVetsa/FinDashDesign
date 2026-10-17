@@ -10,18 +10,19 @@ type UserContextType = {
   portfolioError: string | null; retryPortfolio: () => void;
 };
 const UserContext = createContext<UserContextType | null>(null);
-export function UserProvider({ userId, initialHoldings, children }: {
-  userId: string; initialHoldings: Holding[]; children: React.ReactNode;
+export function UserProvider({ userId, initialHoldings, children, localOnly = false }: {
+  userId: string; initialHoldings: Holding[]; children: React.ReactNode; localOnly?: boolean;
 }) {
   const draftKey = `findash-holdings-draft-${userId}`;
   const [holdings, setState] = useState(() => readStorage<Holding[]>(draftKey, initialHoldings));
   const [portfolioError, setError] = useState<string | null>(null);
   const queue = useMemo(() => new SaveQueue<Holding[]>(async (_id, value) => {
+    if (localOnly) return;
     await updateProfile(userId, { portfolio_holdings: value });
     if (JSON.stringify(readStorage(draftKey, null)) === JSON.stringify(value)) {
       try { localStorage.removeItem(draftKey); } catch { /* unavailable */ }
     }
-  }, error => setError(errorMessage(error))), [userId, draftKey]);
+  }, error => setError(errorMessage(error))), [userId, draftKey, localOnly]);
   useEffect(() => {
     const unregister = registerSaveQueue(queue);
     const draft = readStorage<Holding[] | null>(draftKey, null);

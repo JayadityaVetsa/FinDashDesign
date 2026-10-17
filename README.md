@@ -6,6 +6,14 @@ A financial workspace for the web: draggable market widgets, multiple dashboards
 
 Create an account to start your own workspace, then connect your Finnhub key for live market data. The public deployment uses Neon Postgres for persistent, account-scoped storage.
 
+**[Try the interactive demo](https://fin-dash-design-ad43.vercel.app/demo)** without an account or key. The demo reuses the dashboard widgets with clearly labeled, invented data and browser-only edits. [Beginner guides](https://fin-dash-design-ad43.vercel.app/guides) explain the watchlist and portfolio workflow.
+
+## Student beta and growth
+
+The public site includes a no-signup demo, beginner guides, search metadata, a sitemap, link-preview image, and a public beta-feedback form. See [the launch plan](docs-growth-launch-plan.md) for a small, measurable first-user experiment and unsent outreach drafts. No traffic, testimonials, or conversion results are implied by these changes.
+
+Vercel Web Analytics must also be enabled in the project dashboard. The public-page event filter removes query strings/fragments and excludes private workspace routes; DNT/GPC suppress collection through that filter. Only page views are used, so no paid custom-event feature is required. Read aggregate account/onboarding counts with `npm run growth:report` using an operator database connection. Reports exclude known deployment-check accounts and do not print account details.
+
 ## Deploy to Vercel
 
 1. Import [this repository](https://github.com/JayadityaVetsa/FinDashDesign) into Vercel, or use the existing project.

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { errorMessage } from "@/lib/errors";
 import type { FinnhubCompanyProfile, FinnhubBasicFinancials } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
 
@@ -20,6 +21,7 @@ export default function TechnicalIndicators({
   onClose,
   onTickerChange,
 }: TechnicalIndicatorsProps) {
+  const demo = useDemoData();
   const [ticker, setTicker] = useState(initialTicker);
   const [isEditing, setIsEditing] = useState(false);
   const [financials, setFinancials] = useState<FinnhubBasicFinancials | null>(null);
@@ -32,9 +34,9 @@ export default function TechnicalIndicators({
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   // Observe container width
   useEffect(() => {

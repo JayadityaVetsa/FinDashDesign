@@ -39,6 +39,18 @@ test('production API: accounts, ownership, CRUD, restart persistence, stale tabs
     if (resolve(directory).startsWith(resolve(tmpdir()) + require('node:path').sep) && directory.includes('findash-e2e-')) rmSync(directory, { recursive: true, force: true });
   });
   await start();
+  const landing = await (await fetch(origin)).text();
+  assert.match(landing, /For students and newer investors/);
+  assert.match(landing, /href="\/demo"/);
+  assert.equal((await fetch(origin+'/demo')).status,200);
+  assert.equal((await fetch(origin+'/guides/first-stock-watchlist')).status,200);
+  assert.equal((await fetch(origin+'/guides/not-a-guide')).status,404);
+  const sitemap = await (await fetch(origin+'/sitemap.xml')).text();
+  assert.match(sitemap,/\/guides\/first-stock-watchlist/);
+  assert.doesNotMatch(sitemap,/\/dashboard/);
+  const og = await fetch(origin+'/opengraph-image');
+  assert.equal(og.status,200);
+  assert.match(og.headers.get('content-type'),/image\/png/);
   async function request(path, method='GET', body, cookie='', customOrigin=origin) {
     const response = await fetch(origin+'/api/'+path, { method, headers: { 'Content-Type': 'application/json', Origin: customOrigin, Cookie: cookie },
       body: body === undefined ? undefined : JSON.stringify(body) });

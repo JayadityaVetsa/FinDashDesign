@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import type { FinnhubQuote } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import { formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
 
@@ -24,6 +25,7 @@ const SECTORS = [
 ];
 
 export default function SectorHeatmap({ apiKey, onClose }: SectorHeatmapProps) {
+  const demo = useDemoData();
   const [quotes, setQuotes] = useState<Record<string, FinnhubQuote>>({});
   const [loading, setLoading] = useState(false);
   const [containerWidth, setContainerWidth] = useState(400);
@@ -32,9 +34,9 @@ export default function SectorHeatmap({ apiKey, onClose }: SectorHeatmapProps) {
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   // Observe container width
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function SectorHeatmap({ apiKey, onClose }: SectorHeatmapProps) {
       const interval = setInterval(loadData, 60000);
       return () => clearInterval(interval);
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const getColor = (changePercent: number) => {
     if (changePercent >= 2) return "bg-[var(--accent-green)]";

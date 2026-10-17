@@ -11,13 +11,15 @@
     "test": "node --test tests/unit.test.cjs",
     "test:e2e": "node --test tests/e2e.test.cjs",
     "db:migrate": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/migrate.mjs",
-    "reset-password": "node --env-file-if-exists=.env.local scripts/reset-password.mjs"
+    "reset-password": "node --env-file-if-exists=.env.local scripts/reset-password.mjs",
+    "growth:report": "node --env-file-if-exists=.env.local scripts/growth-report.mjs"
   },
   "engines": {
     "node": ">=22.13.0"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
+    "@vercel/analytics": "^2.0.1",
     "lucide-react": "^0.577.0",
     "next": "^16.4.0",
     "react": "19.2.3",

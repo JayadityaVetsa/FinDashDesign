@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import type { FinnhubEarningsItem } from "@/lib/finnhub";
 import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import WidgetBase from "@/components/widgets/WidgetBase";
 
 type EarningsCalendarProps = {
@@ -12,6 +13,7 @@ type EarningsCalendarProps = {
 };
 
 export default function EarningsCalendar({ apiKey, onClose }: EarningsCalendarProps) {
+  const demo = useDemoData();
   const [earnings, setEarnings] = useState<FinnhubEarningsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,9 +21,9 @@ export default function EarningsCalendar({ apiKey, onClose }: EarningsCalendarPr
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const loadData = async () => {
     if (!clientRef.current) return;
@@ -60,7 +62,7 @@ export default function EarningsCalendar({ apiKey, onClose }: EarningsCalendarPr
     if (apiKey) {
       loadData();
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const isToday = (date: string) => {
     const today = new Date().toISOString().split("T")[0];

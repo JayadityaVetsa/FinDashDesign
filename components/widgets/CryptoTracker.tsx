@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import type { FinnhubQuote } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import { Plus, TrendingUp, TrendingDown } from "lucide-react";
@@ -28,6 +29,7 @@ type CryptoItem = {
 };
 
 export default function CryptoTracker({ apiKey, onClose }: CryptoTrackerProps) {
+  const demo = useDemoData();
   const [cryptos, setCryptos] = useState<CryptoItem[]>(DEFAULT_CRYPTOS);
   const [quotes, setQuotes] = useState<Record<string, FinnhubQuote>>({});
   const [loading, setLoading] = useState(false);
@@ -49,9 +51,9 @@ export default function CryptoTracker({ apiKey, onClose }: CryptoTrackerProps) {
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const loadData = useCallback(async () => {
     if (!clientRef.current || cryptos.length === 0) return;

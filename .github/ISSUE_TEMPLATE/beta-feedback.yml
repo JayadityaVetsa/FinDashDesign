@@ -1,0 +1,34 @@
+name: Student beta feedback
+description: Tell us what was useful or confusing in FinDash.
+title: "[Beta feedback] "
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for trying FinDash. This issue is public. Do not include passwords, API keys, financial records, or private account details."
+  - type: dropdown
+    id: area
+    attributes:
+      label: What did you try?
+      options:
+        - Sample demo
+        - Account setup
+        - Watchlist or portfolio
+        - Beginner guides
+    validations:
+      required: true
+  - type: textarea
+    id: useful
+    attributes:
+      label: What felt useful?
+      placeholder: "One specific thing you would use again."
+  - type: textarea
+    id: confusing
+    attributes:
+      label: What felt confusing or got in your way?
+      placeholder: "What were you trying to do, and what happened instead?"
+    validations:
+      required: true
+  - type: textarea
+    id: next
+    attributes:
+      label: What would make you come back?

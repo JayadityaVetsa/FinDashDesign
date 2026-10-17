@@ -1,5 +1,6 @@
 import * as finnhub from "./finnhub";
 import { getCacheKey, getCached, setCache, CACHE_TTL } from "./cache";
+import { demoResponse } from "./demoData";
 
 type RequestQueue = Map<string, Promise<unknown>>;
 
@@ -34,6 +35,7 @@ async function queuedRequest<T>(
 export type ApiClientOptions = {
   apiKey: string;
   onRateLimit?: (retryAfter: number) => void;
+  demo?: boolean;
 };
 
 // Global rate limit handler
@@ -45,10 +47,12 @@ export function setGlobalRateLimitHandler(handler?: (retryAfter: number) => void
 
 export class ApiClient {
   private apiKey: string;
+  private demo: boolean;
   private onRateLimit?: (retryAfter: number) => void;
 
   constructor(options: ApiClientOptions) {
     this.apiKey = options.apiKey;
+    this.demo = options.demo === true;
     this.onRateLimit = options.onRateLimit;
   }
 
@@ -63,6 +67,7 @@ export class ApiClient {
     requestFn: () => Promise<T>,
     ttl: number
   ): Promise<T> {
+    if (this.demo) return structuredClone(demoResponse(endpoint, params)) as T;
     // Scope cache and in-flight deduplication to this credential. Never persist
     // the raw key, and never let a cached quote validate a different API key.
     const credential = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(this.apiKey));

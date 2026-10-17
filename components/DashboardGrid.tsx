@@ -10,6 +10,8 @@ type LayoutItem = {
   readonly h: number;
   readonly minW?: number;
   readonly minH?: number;
+  readonly isDraggable?: boolean;
+  readonly isResizable?: boolean;
 };
 type Layouts = { [P: string]: LayoutItem[] };
 import { Plus } from "lucide-react";
@@ -82,7 +84,8 @@ export const defaultWidgets: WidgetConfig[] = [
 
 // Convert widget configs to react-grid-layout format
 function configsToLayouts(widgets: WidgetConfig[]): Layouts {
-  const layouts: Layouts = { lg: [], md: [], sm: [] };
+  const layouts: Layouts = { lg: [], md: [], sm: [], xs: [] };
+  let mobileY = 0;
   
   widgets.forEach((widget) => {
     const defaults = WIDGET_DEFAULTS[widget.type] || { w: 4, h: 5, minW: 3, minH: 4 };
@@ -98,6 +101,10 @@ function configsToLayouts(widgets: WidgetConfig[]): Layouts {
     layouts.lg!.push({ ...layoutItem });
     layouts.md!.push({ ...layoutItem, w: Math.min(layoutItem.w, 10) });
     layouts.sm!.push({ ...layoutItem, w: Math.min(layoutItem.w, 6), x: 0 });
+    // A full-width reading order keeps ticker inputs and charts usable on phones.
+    // Mobile rearrangement must not overwrite the saved desktop geometry.
+    layouts.xs!.push({ ...layoutItem, x: 0, y: mobileY, w: 6, minW: 6, isDraggable: false, isResizable: false });
+    mobileY += layoutItem.h;
   });
   
   return layouts;

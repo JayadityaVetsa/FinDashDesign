@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import type { FinnhubNewsItem } from "@/lib/finnhub";
 import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import WidgetBase from "@/components/widgets/WidgetBase";
 
 type NewsFeedProps = {
@@ -39,6 +40,7 @@ function timeAgo(timestamp: number): string {
 }
 
 export default function NewsFeed({ apiKey, ticker: initialTicker = "AAPL", onClose, onTickerChange }: NewsFeedProps) {
+  const demo = useDemoData();
   const [ticker, setTicker] = useState(initialTicker);
   const [isEditing, setIsEditing] = useState(false);
   const [items, setItems] = useState<FinnhubNewsItem[]>([]);
@@ -57,9 +59,9 @@ export default function NewsFeed({ apiKey, ticker: initialTicker = "AAPL", onClo
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const loadData = useCallback(async () => {
     if (!clientRef.current || !ticker.trim()) return;

@@ -5,6 +5,7 @@ import { BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from 
 import ChartDeferredRender from "@/components/ChartDeferredRender";
 import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import { Users } from "lucide-react";
 
@@ -21,6 +22,7 @@ export default function InsiderSentiment({
   onClose,
   onTickerChange,
 }: InsiderSentimentProps) {
+  const demo = useDemoData();
   const [ticker, setTicker] = useState(initialTicker);
   const [isEditing, setIsEditing] = useState(false);
   const [data, setData] = useState<{ month: string; mspr: number; change: number }[]>([]);
@@ -30,9 +32,9 @@ export default function InsiderSentiment({
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const loadData = useCallback(async () => {
     if (!clientRef.current || !ticker.trim()) return;

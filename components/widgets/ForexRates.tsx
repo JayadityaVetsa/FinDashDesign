@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import { ArrowRightLeft } from "lucide-react";
 
@@ -28,6 +29,7 @@ const CURRENCY_FLAGS: Record<string, string> = {
 };
 
 export default function ForexRates({ apiKey, onClose }: ForexRatesProps) {
+  const demo = useDemoData();
   const [rates, setRates] = useState<Record<string, number>>({});
   const [baseCurrency, setBaseCurrency] = useState("USD");
   const [loading, setLoading] = useState(false);
@@ -36,9 +38,9 @@ export default function ForexRates({ apiKey, onClose }: ForexRatesProps) {
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const loadData = useCallback(async () => {
     if (!clientRef.current) return;

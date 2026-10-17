@@ -14,6 +14,7 @@ import {
 import type { FinnhubCandle } from "@/lib/finnhub";
 import { errorMessage } from "@/lib/errors";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import { formatCurrency } from "@/lib/formatters";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import ChartDeferredRender from "@/components/ChartDeferredRender";
@@ -44,6 +45,7 @@ export default function PriceChart({
   onTickerChange,
   onTimeRangeChange,
 }: PriceChartProps) {
+  const demo = useDemoData();
   const [ticker, setTicker] = useState(initialTicker);
   const [isEditing, setIsEditing] = useState(false);
   const [timeRange, setTimeRange] = useState(initialTimeRange);
@@ -53,9 +55,9 @@ export default function PriceChart({
   const clientRef = useRef<ApiClient | null>(null);
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const loadData = useCallback(async () => {
     if (!clientRef.current || !ticker.trim()) return;

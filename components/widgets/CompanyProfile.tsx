@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { errorMessage } from "@/lib/errors";
 import type { FinnhubCompanyProfile, FinnhubBasicFinancials } from "@/lib/finnhub";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import Image from "next/image";
 import WidgetBase from "@/components/widgets/WidgetBase";
 import { Globe, Building2, Calendar } from "lucide-react";
@@ -21,6 +22,7 @@ export default function CompanyProfile({
   onClose,
   onTickerChange,
 }: CompanyProfileProps) {
+  const demo = useDemoData();
   const [ticker, setTicker] = useState(initialTicker);
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<FinnhubCompanyProfile | null>(null);
@@ -44,9 +46,9 @@ export default function CompanyProfile({
 
   useEffect(() => {
     if (apiKey) {
-      clientRef.current = new ApiClient({ apiKey });
+      clientRef.current = new ApiClient({ apiKey, demo });
     }
-  }, [apiKey]);
+  }, [apiKey, demo]);
 
   const loadData = useCallback(async () => {
     if (!clientRef.current || !ticker.trim()) return;

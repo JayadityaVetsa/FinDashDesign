@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { ApiClient } from "@/lib/apiClient";
+import { useDemoData } from "@/lib/DemoContext";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import { usePortfolio } from "@/lib/UserContext";
 import type { Holding } from "@/lib/models";
@@ -28,6 +29,7 @@ const COLORS = [
 
 export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerProps) {
   const { holdings, setHoldings, portfolioError, retryPortfolio } = usePortfolio();
+  const demo = useDemoData();
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
   }, []);
   useEffect(() => {
     let cancelled = false;
-    const client = new ApiClient({ apiKey });
+    const client = new ApiClient({ apiKey, demo });
     async function refresh() {
       if (!apiKey || !tickerKey) return;
       setLoading(true);
@@ -59,7 +61,7 @@ export default function PortfolioTracker({ apiKey, onClose }: PortfolioTrackerPr
     const timer = setTimeout(refresh, 500);
     const interval = setInterval(refresh, 60000);
     return () => { cancelled = true; clearTimeout(timer); clearInterval(interval); };
-  }, [apiKey, tickerKey, refreshKey]);
+  }, [apiKey, tickerKey, refreshKey, demo]);
   const hasAllPrices = holdings.filter(h => h.quantity > 0).every(h => prices[h.ticker.trim().toUpperCase()] > 0);
   const portfolioData = useMemo(() => {
 

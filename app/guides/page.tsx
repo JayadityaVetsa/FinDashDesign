@@ -1,0 +1,8 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { PublicHeader, PublicFooter } from "@/components/PublicShell";
+import { guides } from "@/lib/guides";
+export const metadata: Metadata = { title: "Beginner watchlist and portfolio guides", description: "Learn a practical workflow for your first watchlist and understand the numbers in a portfolio tracker. Hands-on guides for students and newer investors.", alternates: { canonical: "/guides" } };
+export default function Guides() {
+  return <><PublicHeader /><main className="mx-auto max-w-4xl px-5 py-12"><p className="text-xs uppercase tracking-widest text-[var(--accent-blue)]">Learn by doing</p><h1 className="mt-3 text-4xl font-semibold">Your first workspace, explained.</h1><p className="mt-5 max-w-2xl leading-7 text-[var(--text-secondary)]">Short guides to using watchlists and portfolio tracking. Practice with clearly labeled sample data before connecting your own market data.</p><div className="mt-8 grid gap-5 sm:grid-cols-2">{guides.map(guide => <Link key={guide.slug} href={`/guides/${guide.slug}`} className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6"><p className="text-xs text-[var(--text-muted)]">{guide.time} read</p><h2 className="mt-3 text-xl font-semibold">{guide.title}</h2><p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{guide.description}</p><p className="mt-4 text-[var(--accent-blue)]">Read guide →</p></Link>)}</div><Link href="/demo" className="mt-8 inline-block rounded-lg bg-[var(--accent-blue)] px-5 py-3 font-semibold text-white">Try it in the demo</Link></main><PublicFooter /></>;
+}
